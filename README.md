@@ -44,27 +44,188 @@ SILAUNDRY adalah aplikasi desktop Java yang dirancang untuk mengatasi masalah op
 
 ## 🏛️ Arsitektur Class Diagram
 
-Sistem terdiri dari 3 modul utama:
+```mermaid
+classDiagram
+    %% Abstract Class Pengguna
+    class Pengguna {
+        <<abstract>>
+        -idPengguna: String
+        -namaLengkap: String
+        -nomorTelepon: String
+        -kataSandi: String
+        +login(): void
+        +logout(): void
+    }
 
-### **Modul A: Aktor dan Manajemen Pengguna**
-- `Pengguna` (Abstract Class)
-  - `Pelanggan` (extends)
-  - `Karyawan` (extends)
-  - `Pemilik` (extends)
+    %% User Classes
+    class Pelanggan {
+        -idPelanggan: String
+        -alamat: String
+        +lacakStatusCucian(): void
+        +buatPesananOnline(): void
+    }
 
-### **Modul B: Operasional Bisnis**
-- `Pesanan` - Pusat data transaksi
-- `ItemPakaian` - Representasi digital pakaian
-- `ProsesLaundry` - Tahapan teknis
+    class Karyawan {
+        -idKaryawan: String
+        -shiftKerja: String
+        +buatPesananBaru(): void
+        +perbaruiStatusPesanan(): void
+        +rekamDataPakaian(): void
+        +jalankanSmartGrouping(): void
+    }
+
+    class Pemilik {
+        -id: String
+        -namaLengkap: String
+        +tinjauDasborAnalitik(): void
+        +unduhLaporanKeuangan(): void
+        +kelolaDataKaryawan(): void
+    }
+
+    %% Core Business Classes
+    class Pesanan {
+        -idPesanan: String
+        -tanggalMasuk: String
+        -estimasiSelesai: String
+        -statusPesanan: String
+        -totalBiaya: double
+        +tambahItemPakaian(item: ItemPakaian): void
+        +kalkulasiTotalBiaya(): double
+        +kirimNotifikasiSelesai(): void
+    }
+
+    class ItemPakaian {
+        -idItem: String
+        -jenisPakaian: String
+        -kategoriWarna: String
+        -kondisiAwal: String
+        -labelSmartGroup: String
+        -kodeQR: String
+        +terapkanGrupWarna(): void
+        +generateKodeQR(): void
+    }
+
+    class ProsesLaundry {
+        -idProses: String
+        -tahap: String
+        -waktuMulai: String
+        -waktuSelesai: String
+        +updateProses(): void
+    }
+
+    class MesinCuci {
+        -idMesin: String
+        -kapasitas: float
+        -status: String
+        +mulaiCuci(): void
+        +selesaiCuci(): void
+    }
+
+    %% Service Classes
+    class SmartGroupingService {
+        -id: int
+        +kelompokkanItem(pesanan: Pesanan): void
+    }
+
+    class ItemTrackingService {
+        -notif: String
+        +trackItem(idItem: String): void
+        +updateLokasiItem(): void
+    }
+
+    %% Payment Classes
+    class Pembayaran {
+        -idPembayaran: String
+        -metode: String
+        -jumlah: double
+        -status: String
+        +prosesPembayaran(): void
+        +konfirmasiPembayaran(): void
+    }
+
+    class DetailPembayaran {
+        -idDetail: String
+        -waktuBayar: String
+        +generateStruk(): void
+    }
+
+    %% Monitoring Classes
+    class LaporanKeuangan {
+        -idLaporan: String
+        -periodeBulan: String
+        -totalPendapatan: double
+        +cetakDataLaporan(): void
+    }
+
+    class DataDasbor {
+        -idDasbor: String
+        -totalPesananAktif: int
+        -estimasiPendapatan: double
+        +perbaruiMetrikHarian(): void
+    }
+
+    %% Notification Interface and Class
+    class INotifiable {
+        <<interface>>
+        -id: int
+        +kirimNotifikasi(): void
+    }
+
+    class Notifikasi {
+        -idNotifikasi: String
+        -pesan: String
+        -tanggalKirim: String
+        +kirimNotifikasi(): void
+    }
+
+    %% Relationships - Inheritance
+    Pengguna <|-- Pelanggan : Extends
+    Pengguna <|-- Karyawan : Extends
+    Pengguna <|-- Pemilik : Extends
+
+    %% Relationships - Interface Implementation
+    INotifiable <|.. Notifikasi : Implements
+
+    %% Relationships - Associations (dari gambar)
+    Pelanggan --> Pesanan : membuat
+    Karyawan --> Pesanan : mengelola
+    Pemilik --> LaporanKeuangan : mengakses
+    Pemilik --> DataDasbor : memantau
+
+    %% Relationships - Core Business
+    Pesanan *-- ItemPakaian : mengandung
+    Pesanan --> Pembayaran : memiliki
+    Notifikasi --> Pesanan : mengirim
+    Pesanan ..> SmartGroupingService : dikelompokkan
+    
+    ItemPakaian --> ItemTrackingService : dilacak
+    ProsesLaundry --> MesinCuci : menggunakan
+    
+    Pembayaran --> DetailPembayaran : merinci
+```
+
+
+### Penjelasan Modul
+
+**Modul A: Aktor dan Manajemen Pengguna**
+- `Pengguna` (Abstract Class) sebagai parent class
+- `Pelanggan`, `Karyawan`, `Pemilik` sebagai child classes dengan fungsi spesifik
+
+**Modul B: Operasional Bisnis**
+- `Pesanan` - Pusat data transaksi laundry
+- `ItemPakaian` - Representasi digital setiap pakaian
+- `ProsesLaundry` - Tahapan proses pencucian
 - `MesinCuci` - Representasi mesin fisik
-- `SmartGroupingSystem` - Service pengelompokan
-- `ItemTrackingService` - Service pelacakan
+- `SmartGroupingService` - Service pengelompokan otomatis
+- `ItemTrackingService` - Service pelacakan item
 
-### **Modul C: Layanan Sistem**
-- `Pembayaran` & `DetailPembayaran`
-- `INotifiable` (Interface) & `Notifikasi` (implements)
-- `DataDasbor` - Metrik harian
-- `LaporanKeuangan` - Laporan bulanan
+**Modul C: Layanan Sistem**
+- `Pembayaran` & `DetailPembayaran` - Manajemen transaksi
+- `INotifiable` (Interface) & `Notifikasi` - Sistem notifikasi
+- `DataDasbor` - Dashboard metrik real-time
+- `LaporanKeuangan` - Laporan keuangan periodik
+
+
 
 ## 👥 Tim Pengembang
 
