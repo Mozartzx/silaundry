@@ -220,6 +220,382 @@ classDiagram
 ```
 
 
+### Updated Class Diagram
+```mermaid
+classDiagram
+direction LR
+
+class Pengguna {
+  <<abstract>>
+  -String idPengguna
+  -String username
+  -String namaLengkap
+  -String nomorTelepon
+  -String kataSandi
+  -Role role
+  +login() void
+  +logout() void
+}
+
+class Pelanggan {
+  -String idPelanggan
+  -String alamat
+  +lacakStatusCucian() void
+  +lihatRiwayatPesanan() void
+}
+
+class Karyawan {
+  -String idKaryawan
+  -String shiftKerja
+  +buatPesananBaru() void
+  +perbaruiStatusPesanan() void
+  +rekamDataPakaian() void
+  +jalankanSmartGrouping() void
+}
+
+class Pemilik {
+  -String id
+  -String idPemilik
+  +tinjauDasborAnalitik() void
+  +unduhLaporanKeuangan() void
+  +kelolaDataKaryawan() void
+}
+
+class Pesanan {
+  -String idPesanan
+  -String idPelanggan
+  -String namaPelanggan
+  -String idKaryawan
+  -String namaKaryawan
+  -LocalDate tanggalMasuk
+  -LocalDate estimasiSelesai
+  -StatusPesanan statusPesanan
+  -PaketLaundry paketLaundry
+  -double beratKg
+  -double hargaPerKg
+  -double totalBiaya
+  -String catatan
+  -List~ItemPakaian~ daftarItem
+  +tambahItemPakaian(item: ItemPakaian) void
+  +kalkulasiTotalBiaya() double
+  +kirimNotifikasiSelesai() void
+}
+
+class TarifLaundry {
+  -String idTarif
+  -PaketLaundry paketLaundry
+  -String namaPaket
+  -int estimasiHari
+  -double hargaPerKg
+  -boolean aktif
+  +hitungTotal(beratKg: double) double
+}
+
+class ItemPakaian {
+  -String idItem
+  -String idPesanan
+  -String jenisPakaian
+  -KategoriWarna kategoriWarna
+  -String kondisiAwal
+  -String deskripsiDetail
+  -String labelSmartGroup
+  -String kodeQR
+  +terapkanGrupWarna() void
+  +generateKodeQR() void
+}
+
+class ProsesLaundry {
+  -String idProses
+  -String idPesanan
+  -String idMesin
+  -TahapLaundry tahap
+  -LocalDateTime waktuMulai
+  -LocalDateTime waktuSelesai
+  +updateProses() void
+  +updateProses(tahap: TahapLaundry, waktuSelesai: LocalDateTime) void
+}
+
+class MesinCuci {
+  -String idMesin
+  -String namaMesin
+  -float kapasitas
+  -StatusMesin status
+  +mulaiCuci() void
+  +selesaiCuci() void
+}
+
+class Pembayaran {
+  -String idPembayaran
+  -String idPesanan
+  -String metode
+  -double jumlah
+  -StatusPembayaran status
+  +prosesPembayaran() void
+  +konfirmasiPembayaran() void
+}
+
+class DetailPembayaran {
+  -String idDetail
+  -String idPembayaran
+  -LocalDateTime waktuBayar
+  -String keterangan
+  +generateStruk() void
+  +formatStruk() String
+}
+
+class INotifiable {
+  <<interface>>
+  +getId() int
+  +kirimNotifikasi() void
+}
+
+class Notifikasi {
+  -int id
+  -String idNotifikasi
+  -String idPesanan
+  -String pesan
+  -LocalDateTime tanggalKirim
+  -boolean sudahDibaca
+  +kirimNotifikasi() void
+}
+
+class DataDasbor {
+  -String idDasbor
+  -int totalPesananAktif
+  -double estimasiPendapatan
+  -int totalItem
+  -int totalPelanggan
+  +perbaruiMetrikHarian() void
+}
+
+class LaporanKeuangan {
+  -String idLaporan
+  -String periodeBulan
+  -double totalPendapatan
+  -int jumlahPesananSelesai
+  +cetakDataLaporan() void
+  +formatDataLaporan() String
+}
+
+class SmartGroupingService {
+  -int id
+  -ItemPakaianDAO itemPakaianDAO
+  +labelFor(kategoriWarna: KategoriWarna) String
+  +kelompokkanItem(pesanan: Pesanan) void
+  +kelompokkanItem(idPesanan: String) int
+}
+
+class ItemTrackingService {
+  -String notif
+  -ItemPakaianDAO itemPakaianDAO
+  -PesananDAO pesananDAO
+  +trackItem(idItem: String) void
+  +trackItemResult(trackingKey: String) TrackingResult
+  +updateLokasiItem() void
+}
+
+class TrackingResult {
+  -ItemPakaian itemPakaian
+  -Pesanan pesanan
+  +toSummary() String
+}
+
+class AuthController {
+  -UserDAO userDAO
+  +login(username: String, password: String, role: Role) Pengguna
+  +testConnection() String
+}
+
+class PenggunaController {
+  -UserDAO userDAO
+  +getAllPelanggan() List~Pelanggan~
+  +getAllKaryawan() List~Karyawan~
+  +tambahPelanggan(...) void
+  +tambahKaryawan(...) void
+  +hapusKaryawan(idKaryawan: String) void
+}
+
+class PesananController {
+  -PesananDAO pesananDAO
+  -TarifLaundryDAO tarifLaundryDAO
+  +getAllPesanan() List~Pesanan~
+  +getPesananPelanggan(idPelanggan: String) List~Pesanan~
+  +tambahPesanan(idPelanggan: String, idKaryawan: String, paketLaundry: PaketLaundry, beratKg: double, catatan: String) Pesanan
+  +updateStatus(idPesanan: String, statusPesanan: StatusPesanan) void
+  +hapusPesanan(idPesanan: String) void
+}
+
+class ItemController {
+  -ItemPakaianDAO itemPakaianDAO
+  -SmartGroupingService smartGroupingService
+  -ItemTrackingService itemTrackingService
+  +tambahItem(...) void
+  +jalankanSmartGrouping(idPesanan: String) int
+  +lacakItem(trackingKey: String) TrackingResult
+  +hapusItem(idItem: String) void
+}
+
+class TarifController {
+  -TarifLaundryDAO tarifLaundryDAO
+  +getSemuaTarif() List~TarifLaundry~
+  +getTarifAktif() List~TarifLaundry~
+  +updateHarga(paketLaundry: PaketLaundry, hargaPerKg: double) void
+}
+
+class PembayaranController {
+  -PembayaranDAO pembayaranDAO
+  +getPembayaran(idPesanan: String) Pembayaran
+  +simpanPembayaran(idPesanan: String, metode: String, jumlah: double, status: StatusPembayaran) void
+}
+
+class DashboardController {
+  -DashboardDAO dashboardDAO
+  +getDataDasbor() DataDasbor
+  +getLaporanBulanIni() LaporanKeuangan
+}
+
+class UserDAO
+class PesananDAO
+class ItemPakaianDAO
+class TarifLaundryDAO
+class PembayaranDAO
+class DashboardDAO
+class DatabaseConnection
+class PasswordUtil
+class IdGenerator
+
+class Role {
+  <<enumeration>>
+  PEMILIK
+  KARYAWAN
+  PELANGGAN
+}
+
+class StatusPesanan {
+  <<enumeration>>
+  BARU
+  DITERIMA
+  DIPROSES
+  DICUCI
+  DIKERINGKAN
+  DISETRIKA
+  SIAP_DIAMBIL
+  SELESAI
+  DIBATALKAN
+}
+
+class PaketLaundry {
+  <<enumeration>>
+  STANDARD_2_HARI
+  EXPRESS_1_HARI
+}
+
+class KategoriWarna {
+  <<enumeration>>
+  PUTIH
+  TERANG
+  GELAP
+  MUDAH_LUNTUR
+}
+
+class StatusPembayaran {
+  <<enumeration>>
+  BELUM_BAYAR
+  SEBAGIAN
+  LUNAS
+  DIBATALKAN
+}
+
+class StatusMesin {
+  <<enumeration>>
+  TERSEDIA
+  DIGUNAKAN
+  PERAWATAN
+}
+
+class TahapLaundry {
+  <<enumeration>>
+  PENERIMAAN
+  PENCUCIAN
+  PENGERINGAN
+  PENYETRIKAAN
+  PENGEMASAN
+  SELESAI
+}
+
+Pengguna <|-- Pelanggan
+Pengguna <|-- Karyawan
+Pengguna <|-- Pemilik
+Pengguna --> Role
+
+INotifiable <|.. Notifikasi
+
+Pelanggan "1" --> "0..*" Pesanan : memantau
+Karyawan "1" --> "0..*" Pesanan : menginput/mengelola
+Pesanan "1" *-- "0..*" ItemPakaian : berisi
+Pesanan "1" --> "0..1" Pembayaran : memiliki
+Pesanan "1" --> "0..*" Notifikasi : menghasilkan
+Pembayaran "1" --> "0..*" DetailPembayaran : detail
+Pesanan --> StatusPesanan
+Pesanan --> PaketLaundry
+Pesanan ..> TarifLaundry : snapshot harga
+TarifLaundry --> PaketLaundry
+ItemPakaian --> KategoriWarna
+ProsesLaundry --> Pesanan
+ProsesLaundry --> MesinCuci
+ProsesLaundry --> TahapLaundry
+MesinCuci --> StatusMesin
+Pembayaran --> StatusPembayaran
+Notifikasi --> Pesanan
+
+Pemilik ..> DataDasbor : memantau
+Pemilik ..> LaporanKeuangan : mengakses
+Pemilik ..> TarifController : mengatur tarif
+TarifController --> TarifLaundryDAO
+TarifLaundryDAO --> TarifLaundry
+
+AuthController --> UserDAO
+PenggunaController --> UserDAO
+PesananController --> PesananDAO
+PesananController --> TarifLaundryDAO
+ItemController --> ItemPakaianDAO
+ItemController --> SmartGroupingService
+ItemController --> ItemTrackingService
+PembayaranController --> PembayaranDAO
+DashboardController --> DashboardDAO
+
+UserDAO --> Pengguna
+UserDAO --> Pelanggan
+UserDAO --> Karyawan
+UserDAO --> Pemilik
+PesananDAO --> Pesanan
+ItemPakaianDAO --> ItemPakaian
+PembayaranDAO --> Pembayaran
+DashboardDAO --> DataDasbor
+DashboardDAO --> LaporanKeuangan
+
+SmartGroupingService --> ItemPakaianDAO
+SmartGroupingService ..> Pesanan
+ItemTrackingService --> ItemPakaianDAO
+ItemTrackingService --> PesananDAO
+ItemTrackingService --> TrackingResult
+TrackingResult --> ItemPakaian
+TrackingResult --> Pesanan
+
+UserDAO ..> DatabaseConnection
+PesananDAO ..> DatabaseConnection
+ItemPakaianDAO ..> DatabaseConnection
+TarifLaundryDAO ..> DatabaseConnection
+PembayaranDAO ..> DatabaseConnection
+DashboardDAO ..> DatabaseConnection
+
+AuthController ..> PasswordUtil
+PenggunaController ..> PasswordUtil
+PenggunaController ..> IdGenerator
+PesananController ..> IdGenerator
+ItemController ..> IdGenerator
+```
+
 ### Penjelasan Modul
 
 **Modul A: Aktor dan Manajemen Pengguna**
