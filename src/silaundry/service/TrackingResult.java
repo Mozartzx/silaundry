@@ -28,6 +28,9 @@ public class TrackingResult {
                 + " (" + itemPakaian.getJenisPakaian() + ") milik pesanan "
                 + pesanan.getIdPesanan() + " - status: "
                 + pesanan.getStatusPesanan().getDisplayName()
-                + ", pelanggan: " + pesanan.getNamaPelanggan();
+                + ", pelanggan: " + pesanan.getNamaPelanggan()
+                + "\nKondisi awal: " + itemPakaian.getKondisiAwal()
+                + "\nDeskripsi detail: " + itemPakaian.getDeskripsiDetail()
+                + "\nSmart group: " + itemPakaian.getLabelSmartGroup();
     }
 }

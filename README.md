@@ -62,7 +62,7 @@ classDiagram
         -idPelanggan: String
         -alamat: String
         +lacakStatusCucian(): void
-        +buatPesananOnline(): void
+        +lihatRiwayatPesanan(): void
     }
 
     class Karyawan {
@@ -88,6 +88,9 @@ classDiagram
         -tanggalMasuk: String
         -estimasiSelesai: String
         -statusPesanan: String
+        -paketLaundry: String
+        -beratKg: double
+        -hargaPerKg: double
         -totalBiaya: double
         +tambahItemPakaian(item: ItemPakaian): void
         +kalkulasiTotalBiaya(): double
@@ -99,10 +102,20 @@ classDiagram
         -jenisPakaian: String
         -kategoriWarna: String
         -kondisiAwal: String
+        -deskripsiDetail: String
         -labelSmartGroup: String
         -kodeQR: String
         +terapkanGrupWarna(): void
         +generateKodeQR(): void
+    }
+
+    class TarifLaundry {
+        -idTarif: String
+        -paketLaundry: String
+        -namaPaket: String
+        -estimasiHari: int
+        -hargaPerKg: double
+        +hitungTotal(beratKg: double): double
     }
 
     class ProsesLaundry {
@@ -187,12 +200,14 @@ classDiagram
     INotifiable <|.. Notifikasi : Implements
 
     %% Relationships - Associations (dari gambar)
-    Pelanggan --> Pesanan : membuat
+    Pelanggan --> Pesanan : memantau
     Karyawan --> Pesanan : mengelola
+    Pemilik --> TarifLaundry : mengatur
     Pemilik --> LaporanKeuangan : mengakses
     Pemilik --> DataDasbor : memantau
 
     %% Relationships - Core Business
+    Pesanan --> TarifLaundry : memakai snapshot harga
     Pesanan *-- ItemPakaian : mengandung
     Pesanan --> Pembayaran : memiliki
     Notifikasi --> Pesanan : mengirim
@@ -260,7 +275,7 @@ classDiagram
    - Jalankan MySQL dari XAMPP
    - Import file `database/silaundry_schema.sql` melalui phpMyAdmin atau MySQL client
    - Jika username/password MySQL berbeda, ubah `config/db.properties`
-   - Jika database lama sudah pernah di-import dan tidak ingin drop ulang, jalankan `database/migrate_realistic_login_schema.sql`
+   - Jika database lama sudah pernah di-import dan tidak ingin drop ulang, jalankan `database/migrate_realistic_login_schema.sql`, lalu `database/migrate_tarif_per_kilo.sql`
 
 3. **Siapkan JDBC driver**
    - Unduh MySQL Connector/J
@@ -288,21 +303,30 @@ Catatan:
 - Karyawan ditambahkan dari dashboard pemilik.
 - Pelanggan dapat membuat akun sendiri melalui tombol **Daftar Pelanggan** di halaman login.
 - Struktur database memakai `pengguna` sebagai tabel parent untuk login/role, sedangkan `pelanggan`, `karyawan`, dan `pemilik` hanya menyimpan atribut khusus masing-masing role.
+- Tarif laundry dikelola oleh pemilik dari menu **Tarif Laundry**:
+  - Standard 2 Hari: default Rp7.000/kg
+  - Express 1 Hari: default Rp8.000/kg
+- Total biaya pesanan dihitung otomatis dari `berat_kg x harga_per_kg`; karyawan dan pelanggan tidak menginput total manual.
+- Karyawan dapat mencatat jenis pakaian, kategori warna, kondisi awal, dan deskripsi detail per item untuk mengurangi risiko pakaian tertukar.
 
 ## 📊 Fitur Utama
 
 ### Untuk Pelanggan
 - 📱 Lacak status cucian secara real-time
-- 🛒 Buat pesanan online
+- Lihat pesanan yang sedang berjalan
+- Lihat riwayat pesanan selesai atau dibatalkan
 - 🔔 Notifikasi otomatis saat proses selesai
 
 ### Untuk Karyawan
+- Hitung total otomatis berdasarkan paket dan berat kilo
+- Catat deskripsi detail pakaian pelanggan
 - ➕ CRUD manajemen pesanan
 - 📦 Rekam data pakaian per item
 - 🎨 Eksekusi Smart Grouping
 - 🔄 Update status operasional
 
 ### Untuk Owner/Pemilik
+- Kelola harga per kilo untuk paket Standard 2 Hari dan Express 1 Hari
 - 📈 Dashboard analitik performa
 - 💰 Laporan keuangan bulanan
 - 👥 Kelola data karyawan

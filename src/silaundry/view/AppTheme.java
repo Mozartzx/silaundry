@@ -3,7 +3,12 @@ package silaundry.view;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.LayoutManager;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -97,22 +102,24 @@ public final class AppTheme {
 
     public static JButton primaryButton(String text) {
         JButton button = new JButton(text);
-        styleButton(button, PRIMARY, Color.WHITE);
+        button.setFont(BODY_FONT.deriveFont(Font.BOLD));
+        styleButton(button, new Color(24, 96, 106), Color.WHITE);
         return button;
     }
 
     public static JButton secondaryButton(String text) {
         JButton button = new JButton(text);
-        styleButton(button, SURFACE, PRIMARY_DARK);
+        styleButton(button, new Color(229, 244, 247), PRIMARY_DARK);
         button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(183, 202, 207)),
+                BorderFactory.createLineBorder(new Color(111, 159, 168)),
                 new EmptyBorder(8, 13, 8, 13)));
         return button;
     }
 
     public static JButton dangerButton(String text) {
         JButton button = new JButton(text);
-        styleButton(button, DANGER, Color.WHITE);
+        button.setFont(BODY_FONT.deriveFont(Font.BOLD));
+        styleButton(button, new Color(170, 45, 45), Color.WHITE);
         return button;
     }
 
@@ -120,10 +127,67 @@ public final class AppTheme {
         button.setBackground(background);
         button.setForeground(foreground);
         button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(background.darker()),
                 new EmptyBorder(8, 13, 8, 13)));
+        button.setMinimumSize(new Dimension(96, 36));
+    }
+
+    public static JPanel formGrid() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(SURFACE);
+        return panel;
+    }
+
+    public static void addField(JPanel panel, int row, int pairColumn, String labelText, JComponent field) {
+        GridBagConstraints labelConstraints = new GridBagConstraints();
+        labelConstraints.gridx = pairColumn * 2;
+        labelConstraints.gridy = row;
+        labelConstraints.insets = new Insets(5, pairColumn == 0 ? 0 : 18, 5, 8);
+        labelConstraints.anchor = GridBagConstraints.LINE_START;
+        JLabel label = new JLabel(labelText);
+        label.setForeground(MUTED);
+        label.setFont(SMALL_FONT);
+        panel.add(label, labelConstraints);
+
+        GridBagConstraints fieldConstraints = new GridBagConstraints();
+        fieldConstraints.gridx = pairColumn * 2 + 1;
+        fieldConstraints.gridy = row;
+        fieldConstraints.insets = new Insets(5, 0, 5, 0);
+        fieldConstraints.anchor = GridBagConstraints.LINE_START;
+        fieldConstraints.fill = GridBagConstraints.HORIZONTAL;
+        fieldConstraints.weightx = 1;
+        panel.add(field, fieldConstraints);
+    }
+
+    public static void addWideField(JPanel panel, int row, String labelText, JComponent field) {
+        GridBagConstraints labelConstraints = new GridBagConstraints();
+        labelConstraints.gridx = 0;
+        labelConstraints.gridy = row;
+        labelConstraints.insets = new Insets(5, 0, 5, 8);
+        labelConstraints.anchor = GridBagConstraints.LINE_START;
+        JLabel label = new JLabel(labelText);
+        label.setForeground(MUTED);
+        label.setFont(SMALL_FONT);
+        panel.add(label, labelConstraints);
+
+        GridBagConstraints fieldConstraints = new GridBagConstraints();
+        fieldConstraints.gridx = 1;
+        fieldConstraints.gridy = row;
+        fieldConstraints.gridwidth = 3;
+        fieldConstraints.insets = new Insets(5, 0, 5, 0);
+        fieldConstraints.fill = GridBagConstraints.HORIZONTAL;
+        fieldConstraints.weightx = 1;
+        panel.add(field, fieldConstraints);
+    }
+
+    public static JPanel actionRow() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        panel.setBackground(SURFACE);
+        return panel;
     }
 
     public static void styleTextField(JTextField field) {

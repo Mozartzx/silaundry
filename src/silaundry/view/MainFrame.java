@@ -47,7 +47,7 @@ public class MainFrame extends JFrame {
         shell.add(contentPanel, BorderLayout.CENTER);
 
         if (pengguna instanceof Pelanggan pelanggan) {
-            addRoute("Pesanan Saya", "Buat dan pantau pesanan", new PelangganPanel(pelanggan));
+            addRoute("Status Laundry", "Pantau pesanan dan riwayat", new PelangganPanel(pelanggan));
         }
         if (pengguna instanceof Karyawan karyawan) {
             addRoute("Operasional", "Pesanan, item, pembayaran", new KaryawanPanel(karyawan));
@@ -118,6 +118,8 @@ public class MainFrame extends JFrame {
         JButton button = new JButton("<html><b>" + title + "</b><br><span style='font-size:10px'>" + subtitle + "</span></html>");
         button.setHorizontalAlignment(JButton.LEFT);
         button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(42, 98, 105)),
                 new EmptyBorder(10, 12, 10, 12)));

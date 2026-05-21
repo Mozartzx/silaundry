@@ -3,6 +3,7 @@ package silaundry.model;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import silaundry.model.enums.PaketLaundry;
 import silaundry.model.enums.StatusPesanan;
 
 public class Pesanan {
@@ -14,20 +15,30 @@ public class Pesanan {
     private LocalDate tanggalMasuk;
     private LocalDate estimasiSelesai;
     private StatusPesanan statusPesanan;
+    private PaketLaundry paketLaundry;
+    private double beratKg;
+    private double hargaPerKg;
     private double totalBiaya;
     private String catatan;
     private final List<ItemPakaian> daftarItem = new ArrayList<>();
 
     public Pesanan(String idPesanan, String idPelanggan, String idKaryawan, LocalDate tanggalMasuk,
-            LocalDate estimasiSelesai, StatusPesanan statusPesanan, double totalBiaya, String catatan) {
+            LocalDate estimasiSelesai, StatusPesanan statusPesanan, PaketLaundry paketLaundry, double beratKg,
+            double hargaPerKg, double totalBiaya, String catatan) {
         this.idPesanan = idPesanan;
         this.idPelanggan = idPelanggan;
         this.idKaryawan = idKaryawan;
         this.tanggalMasuk = tanggalMasuk;
         this.estimasiSelesai = estimasiSelesai;
         this.statusPesanan = statusPesanan;
+        this.paketLaundry = paketLaundry;
+        this.beratKg = beratKg;
+        this.hargaPerKg = hargaPerKg;
         this.totalBiaya = totalBiaya;
         this.catatan = catatan;
+        if (totalBiaya <= 0 && beratKg > 0 && hargaPerKg > 0) {
+            kalkulasiTotalBiaya();
+        }
     }
 
     public void tambahItemPakaian(ItemPakaian item) {
@@ -35,6 +46,7 @@ public class Pesanan {
     }
 
     public double kalkulasiTotalBiaya() {
+        totalBiaya = Math.round(beratKg * hargaPerKg);
         return totalBiaya;
     }
 
@@ -104,6 +116,30 @@ public class Pesanan {
 
     public void setStatusPesanan(StatusPesanan statusPesanan) {
         this.statusPesanan = statusPesanan;
+    }
+
+    public PaketLaundry getPaketLaundry() {
+        return paketLaundry;
+    }
+
+    public void setPaketLaundry(PaketLaundry paketLaundry) {
+        this.paketLaundry = paketLaundry;
+    }
+
+    public double getBeratKg() {
+        return beratKg;
+    }
+
+    public void setBeratKg(double beratKg) {
+        this.beratKg = beratKg;
+    }
+
+    public double getHargaPerKg() {
+        return hargaPerKg;
+    }
+
+    public void setHargaPerKg(double hargaPerKg) {
+        this.hargaPerKg = hargaPerKg;
     }
 
     public double getTotalBiaya() {

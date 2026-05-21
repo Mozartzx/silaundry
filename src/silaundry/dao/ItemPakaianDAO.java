@@ -59,8 +59,8 @@ public class ItemPakaianDAO {
     public void create(ItemPakaian item) throws SQLException {
         String sql = """
                 INSERT INTO item_pakaian (id_item, id_pesanan, jenis_pakaian, kategori_warna,
-                    kondisi_awal, label_smart_group, kode_qr)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    kondisi_awal, deskripsi_detail, label_smart_group, kode_qr)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection connection = DatabaseConnection.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -69,8 +69,9 @@ public class ItemPakaianDAO {
             statement.setString(3, item.getJenisPakaian());
             statement.setString(4, item.getKategoriWarna().name());
             statement.setString(5, item.getKondisiAwal());
-            statement.setString(6, item.getLabelSmartGroup());
-            statement.setString(7, item.getKodeQR());
+            statement.setString(6, item.getDeskripsiDetail());
+            statement.setString(7, item.getLabelSmartGroup());
+            statement.setString(8, item.getKodeQR());
             statement.executeUpdate();
         }
     }
@@ -101,6 +102,7 @@ public class ItemPakaianDAO {
                 resultSet.getString("jenis_pakaian"),
                 KategoriWarna.valueOf(resultSet.getString("kategori_warna")),
                 resultSet.getString("kondisi_awal"),
+                resultSet.getString("deskripsi_detail"),
                 resultSet.getString("label_smart_group"),
                 resultSet.getString("kode_qr"));
     }

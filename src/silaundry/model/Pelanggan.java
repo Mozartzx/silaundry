@@ -17,8 +17,8 @@ public class Pelanggan extends Pengguna {
         System.out.println("Melacak status cucian pelanggan " + idPelanggan);
     }
 
-    public void buatPesananOnline() {
-        System.out.println("Membuat pesanan online pelanggan " + idPelanggan);
+    public void lihatRiwayatPesanan() {
+        System.out.println("Melihat riwayat pesanan pelanggan " + idPelanggan);
     }
 
     public String getIdPelanggan() {

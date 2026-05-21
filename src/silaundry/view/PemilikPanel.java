@@ -3,7 +3,6 @@ package silaundry.view;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -12,6 +11,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTable;
@@ -21,9 +21,11 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import silaundry.controller.DashboardController;
 import silaundry.controller.PenggunaController;
+import silaundry.controller.TarifController;
 import silaundry.model.DataDasbor;
 import silaundry.model.Karyawan;
 import silaundry.model.LaporanKeuangan;
+import silaundry.model.TarifLaundry;
 
 public class PemilikPanel extends JPanel {
     private final CardLayout cardLayout = new CardLayout();
@@ -31,6 +33,7 @@ public class PemilikPanel extends JPanel {
     private final List<JButton> menuButtons = new ArrayList<>();
     private final DashboardController dashboardController = new DashboardController();
     private final PenggunaController penggunaController = new PenggunaController();
+    private final TarifController tarifController = new TarifController();
     private final JLabel aktifLabel = new JLabel("-");
     private final JLabel pendapatanLabel = new JLabel("-");
     private final JLabel itemLabel = new JLabel("-");
@@ -43,15 +46,21 @@ public class PemilikPanel extends JPanel {
     private final JTextField teleponField = new JTextField(10);
     private final JTextField passwordField = new JTextField("karyawan123", 10);
     private final JTextField shiftField = new JTextField("Pagi", 8);
+    private final DefaultTableModel tarifModel = UiUtil.model("ID", "Paket", "Estimasi", "Harga/kg", "Aktif");
+    private final JTable tarifTable = new JTable(tarifModel);
+    private final JComboBox<TarifLaundry> tarifCombo = new JComboBox<>();
+    private final JTextField hargaTarifField = new JTextField(10);
 
     public PemilikPanel() {
         setLayout(new BorderLayout());
         setBackground(AppTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
         styleInputs();
+        tarifCombo.addActionListener(event -> tarifSelected());
         contentPanel.setBackground(AppTheme.BACKGROUND);
         contentPanel.add(buildDashboardPanel(), "Dashboard");
         contentPanel.add(buildKaryawanPanel(), "Kelola Karyawan");
+        contentPanel.add(buildTarifPanel(), "Tarif Laundry");
         add(buildLocalSidebar(), BorderLayout.WEST);
         add(contentPanel, BorderLayout.CENTER);
         refreshAll();
@@ -74,6 +83,7 @@ public class PemilikPanel extends JPanel {
         menu.setLayout(new BoxLayout(menu, BoxLayout.Y_AXIS));
         addMenu(menu, "Dashboard");
         addMenu(menu, "Kelola Karyawan");
+        addMenu(menu, "Tarif Laundry");
 
         sidebar.add(header, BorderLayout.NORTH);
         sidebar.add(menu, BorderLayout.CENTER);
@@ -98,6 +108,8 @@ public class PemilikPanel extends JPanel {
         JButton button = new JButton(text);
         button.setHorizontalAlignment(JButton.LEFT);
         button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
         button.setBackground(AppTheme.SURFACE);
         button.setForeground(AppTheme.TEXT);
         button.setBorder(BorderFactory.createCompoundBorder(
@@ -147,30 +159,64 @@ public class PemilikPanel extends JPanel {
         JPanel panel = AppTheme.page(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         UiUtil.applyTableStyle(karyawanTable);
-        JPanel form = AppTheme.surface(new FlowLayout(FlowLayout.LEFT));
-        form.add(AppTheme.sectionTitle("Kelola Karyawan"));
-        form.add(new JLabel("Username"));
-        form.add(usernameField);
-        form.add(new JLabel("Nama"));
-        form.add(namaField);
-        form.add(new JLabel("Telepon"));
-        form.add(teleponField);
-        form.add(new JLabel("Password"));
-        form.add(passwordField);
-        form.add(new JLabel("Shift"));
-        form.add(shiftField);
+        JPanel form = AppTheme.surface(new BorderLayout(0, 12));
+        form.add(AppTheme.sectionTitle("Kelola Karyawan"), BorderLayout.NORTH);
+
+        JPanel fields = AppTheme.formGrid();
+        AppTheme.addField(fields, 0, 0, "Username", usernameField);
+        AppTheme.addField(fields, 0, 1, "Nama", namaField);
+        AppTheme.addField(fields, 1, 0, "Telepon", teleponField);
+        AppTheme.addField(fields, 1, 1, "Password", passwordField);
+        AppTheme.addField(fields, 2, 0, "Shift", shiftField);
+
         JButton addButton = AppTheme.primaryButton("Tambah Karyawan");
         addButton.addActionListener(event -> addKaryawan());
         JButton deleteButton = AppTheme.dangerButton("Nonaktifkan");
         deleteButton.addActionListener(event -> deleteKaryawan());
         JButton refreshButton = AppTheme.secondaryButton("Refresh");
         refreshButton.addActionListener(event -> refreshKaryawan());
-        form.add(addButton);
-        form.add(deleteButton);
-        form.add(refreshButton);
+        JPanel actions = AppTheme.actionRow();
+        actions.add(addButton);
+        actions.add(deleteButton);
+        actions.add(refreshButton);
+
+        form.add(fields, BorderLayout.CENTER);
+        form.add(actions, BorderLayout.SOUTH);
 
         panel.add(form, BorderLayout.NORTH);
         panel.add(AppTheme.scroll(karyawanTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildTarifPanel() {
+        JPanel panel = AppTheme.page(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        UiUtil.applyTableStyle(tarifTable);
+
+        JPanel form = AppTheme.surface(new BorderLayout(0, 12));
+        JPanel title = new JPanel(new BorderLayout(0, 4));
+        title.setBackground(AppTheme.SURFACE);
+        title.add(AppTheme.sectionTitle("Tarif Laundry"), BorderLayout.NORTH);
+        title.add(AppTheme.muted("Harga per kilo hanya dapat diubah oleh pemilik."), BorderLayout.CENTER);
+
+        JPanel fields = AppTheme.formGrid();
+        AppTheme.addField(fields, 0, 0, "Paket", tarifCombo);
+        AppTheme.addField(fields, 0, 1, "Harga/kg", hargaTarifField);
+
+        JButton updateButton = AppTheme.primaryButton("Update Harga");
+        updateButton.addActionListener(event -> updateTarif());
+        JButton refreshButton = AppTheme.secondaryButton("Refresh");
+        refreshButton.addActionListener(event -> refreshTarif());
+        JPanel actions = AppTheme.actionRow();
+        actions.add(updateButton);
+        actions.add(refreshButton);
+
+        form.add(title, BorderLayout.NORTH);
+        form.add(fields, BorderLayout.CENTER);
+        form.add(actions, BorderLayout.SOUTH);
+
+        panel.add(form, BorderLayout.NORTH);
+        panel.add(AppTheme.scroll(tarifTable), BorderLayout.CENTER);
         return panel;
     }
 
@@ -190,11 +236,14 @@ public class PemilikPanel extends JPanel {
         AppTheme.styleTextField(teleponField);
         AppTheme.styleTextField(passwordField);
         AppTheme.styleTextField(shiftField);
+        AppTheme.styleComboBox(tarifCombo);
+        AppTheme.styleTextField(hargaTarifField);
     }
 
     private void refreshAll() {
         refreshDashboard();
         refreshKaryawan();
+        refreshTarif();
     }
 
     private void refreshDashboard() {
@@ -225,6 +274,30 @@ public class PemilikPanel extends JPanel {
             }
         } catch (SQLException ex) {
             UiUtil.error(this, "Gagal memuat data karyawan.", ex);
+        }
+    }
+
+    private void refreshTarif() {
+        TarifLaundry selectedTarif = (TarifLaundry) tarifCombo.getSelectedItem();
+        tarifModel.setRowCount(0);
+        tarifCombo.removeAllItems();
+        try {
+            for (TarifLaundry tarif : tarifController.getSemuaTarif()) {
+                tarifModel.addRow(new Object[] {
+                        tarif.getIdTarif(),
+                        tarif.getNamaPaket(),
+                        tarif.getEstimasiHari() + " hari",
+                        UiUtil.money(tarif.getHargaPerKg()),
+                        tarif.isAktif() ? "Aktif" : "Nonaktif"
+                });
+                tarifCombo.addItem(tarif);
+                if (selectedTarif != null && tarif.getPaketLaundry() == selectedTarif.getPaketLaundry()) {
+                    tarifCombo.setSelectedItem(tarif);
+                }
+            }
+            tarifSelected();
+        } catch (SQLException ex) {
+            UiUtil.error(this, "Gagal memuat tarif laundry.", ex);
         }
     }
 
@@ -260,6 +333,33 @@ public class PemilikPanel extends JPanel {
             refreshKaryawan();
         } catch (SQLException ex) {
             UiUtil.error(this, "Gagal menonaktifkan karyawan.", ex);
+        }
+    }
+
+    private void tarifSelected() {
+        TarifLaundry tarif = (TarifLaundry) tarifCombo.getSelectedItem();
+        if (tarif != null) {
+            hargaTarifField.setText(String.valueOf(Math.round(tarif.getHargaPerKg())));
+        }
+    }
+
+    private void updateTarif() {
+        TarifLaundry tarif = (TarifLaundry) tarifCombo.getSelectedItem();
+        if (tarif == null) {
+            UiUtil.info(this, "Pilih paket laundry yang akan diubah.");
+            return;
+        }
+        try {
+            tarifController.updateHarga(tarif.getPaketLaundry(), Double.parseDouble(hargaTarifField.getText().trim()));
+            refreshTarif();
+            refreshDashboard();
+            UiUtil.info(this, "Harga " + tarif.getNamaPaket() + " berhasil diperbarui.");
+        } catch (NumberFormatException ex) {
+            UiUtil.info(this, "Harga per kilo harus berupa angka.");
+        } catch (IllegalArgumentException ex) {
+            UiUtil.info(this, ex.getMessage());
+        } catch (SQLException ex) {
+            UiUtil.error(this, "Gagal memperbarui tarif laundry.", ex);
         }
     }
 }

@@ -57,6 +57,19 @@ CREATE TABLE mesin_cuci (
     CONSTRAINT chk_mesin_kapasitas CHECK (kapasitas > 0)
 );
 
+CREATE TABLE tarif_laundry (
+    id_tarif VARCHAR(20) PRIMARY KEY,
+    paket_laundry ENUM('STANDARD_2_HARI','EXPRESS_1_HARI') NOT NULL UNIQUE,
+    nama_paket VARCHAR(60) NOT NULL,
+    estimasi_hari INT NOT NULL,
+    harga_per_kg DECIMAL(12,2) NOT NULL,
+    aktif BOOLEAN NOT NULL DEFAULT TRUE,
+    diperbarui_pada TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_tarif_aktif (aktif),
+    CONSTRAINT chk_tarif_estimasi CHECK (estimasi_hari BETWEEN 1 AND 14),
+    CONSTRAINT chk_tarif_harga CHECK (harga_per_kg > 0)
+);
+
 CREATE TABLE pesanan (
     id_pesanan VARCHAR(20) PRIMARY KEY,
     id_pelanggan VARCHAR(20) NOT NULL,
@@ -64,7 +77,10 @@ CREATE TABLE pesanan (
     tanggal_masuk DATE NOT NULL,
     estimasi_selesai DATE NOT NULL,
     status_pesanan ENUM('BARU','DITERIMA','DIPROSES','DICUCI','DIKERINGKAN','DISETRIKA','SIAP_DIAMBIL','SELESAI','DIBATALKAN') NOT NULL DEFAULT 'BARU',
-    total_biaya DECIMAL(12,2) NOT NULL DEFAULT 0,
+    paket_laundry ENUM('STANDARD_2_HARI','EXPRESS_1_HARI') NOT NULL,
+    berat_kg DECIMAL(6,2) NOT NULL,
+    harga_per_kg DECIMAL(12,2) NOT NULL,
+    total_biaya DECIMAL(12,2) NOT NULL,
     catatan TEXT,
     FOREIGN KEY (id_pelanggan) REFERENCES pelanggan(id_pelanggan)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -74,6 +90,8 @@ CREATE TABLE pesanan (
     INDEX idx_pesanan_karyawan_status (id_karyawan, status_pesanan),
     INDEX idx_pesanan_tanggal (tanggal_masuk),
     CONSTRAINT chk_pesanan_estimasi CHECK (estimasi_selesai >= tanggal_masuk),
+    CONSTRAINT chk_pesanan_berat CHECK (berat_kg > 0),
+    CONSTRAINT chk_pesanan_harga_per_kg CHECK (harga_per_kg > 0),
     CONSTRAINT chk_pesanan_total CHECK (total_biaya >= 0)
 );
 
@@ -83,6 +101,7 @@ CREATE TABLE item_pakaian (
     jenis_pakaian VARCHAR(60) NOT NULL,
     kategori_warna ENUM('PUTIH','TERANG','GELAP','MUDAH_LUNTUR') NOT NULL,
     kondisi_awal VARCHAR(120) NOT NULL,
+    deskripsi_detail VARCHAR(255) NOT NULL,
     label_smart_group VARCHAR(60) NOT NULL,
     kode_qr VARCHAR(60) NOT NULL UNIQUE,
     FOREIGN KEY (id_pesanan) REFERENCES pesanan(id_pesanan)
@@ -215,14 +234,21 @@ INSERT INTO mesin_cuci (id_mesin, nama_mesin, kapasitas, status) VALUES
 ('MSN002', 'Mesin B', 10.00, 'TERSEDIA'),
 ('MSN003', 'Mesin C', 12.00, 'PERAWATAN');
 
-INSERT INTO pesanan (id_pesanan, id_pelanggan, id_karyawan, tanggal_masuk, estimasi_selesai, status_pesanan, total_biaya, catatan) VALUES
-('ORD001', 'PLG001', 'KRY001', CURRENT_DATE(), DATE_ADD(CURRENT_DATE(), INTERVAL 2 DAY), 'DIPROSES', 45000, 'Cuci lipat reguler'),
-('ORD002', 'PLG002', 'KRY001', CURRENT_DATE(), DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY), 'SIAP_DIAMBIL', 30000, 'Prioritas warna gelap');
+INSERT INTO tarif_laundry (id_tarif, paket_laundry, nama_paket, estimasi_hari, harga_per_kg, aktif) VALUES
+('TRF001', 'STANDARD_2_HARI', 'Standard 2 Hari', 2, 7000, TRUE),
+('TRF002', 'EXPRESS_1_HARI', 'Express 1 Hari', 1, 8000, TRUE);
 
-INSERT INTO item_pakaian (id_item, id_pesanan, jenis_pakaian, kategori_warna, kondisi_awal, label_smart_group, kode_qr) VALUES
-('ITM001', 'ORD001', 'Kemeja', 'PUTIH', 'Normal', 'Grup Putih', 'QR-ITM001'),
-('ITM002', 'ORD001', 'Celana Jeans', 'GELAP', 'Sedikit luntur', 'Grup Gelap', 'QR-ITM002'),
-('ITM003', 'ORD002', 'Kaos Merah', 'MUDAH_LUNTUR', 'Warna kuat', 'Grup Mudah Luntur', 'QR-ITM003');
+INSERT INTO pesanan (id_pesanan, id_pelanggan, id_karyawan, tanggal_masuk, estimasi_selesai, status_pesanan,
+    paket_laundry, berat_kg, harga_per_kg, total_biaya, catatan) VALUES
+('ORD001', 'PLG001', 'KRY001', CURRENT_DATE(), DATE_ADD(CURRENT_DATE(), INTERVAL 2 DAY), 'DIPROSES',
+    'STANDARD_2_HARI', 6.50, 7000, 45500, 'Cuci lipat reguler'),
+('ORD002', 'PLG002', 'KRY001', CURRENT_DATE(), DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY), 'SIAP_DIAMBIL',
+    'EXPRESS_1_HARI', 3.75, 8000, 30000, 'Prioritas warna gelap');
+
+INSERT INTO item_pakaian (id_item, id_pesanan, jenis_pakaian, kategori_warna, kondisi_awal, deskripsi_detail, label_smart_group, kode_qr) VALUES
+('ITM001', 'ORD001', 'Kemeja', 'PUTIH', 'Normal', 'Kemeja putih lengan panjang, satu kancing cadangan di manset kiri.', 'Grup Putih', 'QR-ITM001'),
+('ITM002', 'ORD001', 'Celana Jeans', 'GELAP', 'Sedikit luntur', 'Jeans biru tua merek Denim Co, ada lipatan aus di lutut kanan.', 'Grup Gelap', 'QR-ITM002'),
+('ITM003', 'ORD002', 'Kaos Merah', 'MUDAH_LUNTUR', 'Warna kuat', 'Kaos merah polos ukuran L, sablon kecil di dada kiri.', 'Grup Mudah Luntur', 'QR-ITM003');
 
 INSERT INTO pembayaran (id_pembayaran, id_pesanan, metode, jumlah, status) VALUES
 ('PAY001', 'ORD001', 'Tunai', 45000, 'BELUM_BAYAR'),

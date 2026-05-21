@@ -9,6 +9,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import silaundry.model.Pesanan;
+import silaundry.model.enums.PaketLaundry;
 import silaundry.model.enums.StatusPesanan;
 import silaundry.util.DatabaseConnection;
 
@@ -55,8 +56,8 @@ public class PesananDAO {
     public void create(Pesanan pesanan) throws SQLException {
         String sql = """
                 INSERT INTO pesanan (id_pesanan, id_pelanggan, id_karyawan, tanggal_masuk,
-                    estimasi_selesai, status_pesanan, total_biaya, catatan)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    estimasi_selesai, status_pesanan, paket_laundry, berat_kg, harga_per_kg, total_biaya, catatan)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection connection = DatabaseConnection.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -66,8 +67,11 @@ public class PesananDAO {
             statement.setDate(4, Date.valueOf(pesanan.getTanggalMasuk()));
             statement.setDate(5, Date.valueOf(pesanan.getEstimasiSelesai()));
             statement.setString(6, pesanan.getStatusPesanan().name());
-            statement.setDouble(7, pesanan.getTotalBiaya());
-            statement.setString(8, pesanan.getCatatan());
+            statement.setString(7, pesanan.getPaketLaundry().name());
+            statement.setDouble(8, pesanan.getBeratKg());
+            statement.setDouble(9, pesanan.getHargaPerKg());
+            statement.setDouble(10, pesanan.getTotalBiaya());
+            statement.setString(11, pesanan.getCatatan());
             statement.executeUpdate();
         }
     }
@@ -110,6 +114,9 @@ public class PesananDAO {
                 resultSet.getDate("tanggal_masuk").toLocalDate(),
                 resultSet.getDate("estimasi_selesai").toLocalDate(),
                 StatusPesanan.valueOf(resultSet.getString("status_pesanan")),
+                PaketLaundry.valueOf(resultSet.getString("paket_laundry")),
+                resultSet.getDouble("berat_kg"),
+                resultSet.getDouble("harga_per_kg"),
                 resultSet.getDouble("total_biaya"),
                 resultSet.getString("catatan"));
         pesanan.setNamaPelanggan(resultSet.getString("nama_pelanggan"));

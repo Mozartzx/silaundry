@@ -23,7 +23,8 @@ public class ItemController {
         return itemPakaianDAO.findByPesanan(idPesanan);
     }
 
-    public void tambahItem(String idPesanan, String jenisPakaian, KategoriWarna kategoriWarna, String kondisiAwal)
+    public void tambahItem(String idPesanan, String jenisPakaian, KategoriWarna kategoriWarna, String kondisiAwal,
+            String deskripsiDetail)
             throws SQLException {
         String idItem = IdGenerator.generate("ITM");
         ItemPakaian item = new ItemPakaian(
@@ -32,6 +33,7 @@ public class ItemController {
                 jenisPakaian,
                 kategoriWarna,
                 kondisiAwal,
+                deskripsiDetail,
                 smartGroupingService.labelFor(kategoriWarna),
                 "QR-" + idItem);
         itemPakaianDAO.create(item);

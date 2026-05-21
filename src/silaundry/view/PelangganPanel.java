@@ -9,105 +9,115 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JSpinner;
 import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.table.DefaultTableModel;
-import silaundry.controller.PenggunaController;
 import silaundry.controller.PesananController;
 import silaundry.model.Pelanggan;
 import silaundry.model.Pesanan;
+import silaundry.model.enums.StatusPesanan;
 
 public class PelangganPanel extends JPanel {
     private final Pelanggan pelanggan;
     private final PesananController pesananController = new PesananController();
-    private final PenggunaController penggunaController = new PenggunaController();
-    private final DefaultTableModel tableModel = UiUtil.model("ID", "Tanggal", "Estimasi", "Status", "Total", "Catatan");
-    private final JTable table = new JTable(tableModel);
-    private final JSpinner estimasiSpinner = new JSpinner(new SpinnerNumberModel(2, 1, 14, 1));
-    private final JTextField totalField = new JTextField("25000", 10);
-    private final JTextField catatanField = new JTextField(28);
+    private final JLabel summaryLabel = AppTheme.muted("Memuat status laundry...");
+    private final DefaultTableModel activeModel = UiUtil.model("ID", "Tanggal", "Estimasi", "Paket", "Berat",
+            "Status", "Total", "Catatan");
+    private final DefaultTableModel historyModel = UiUtil.model("ID", "Tanggal", "Selesai/Estimasi", "Paket",
+            "Berat", "Status", "Total", "Catatan");
+    private final JTable activeTable = new JTable(activeModel);
+    private final JTable historyTable = new JTable(historyModel);
 
     public PelangganPanel(Pelanggan pelanggan) {
         this.pelanggan = pelanggan;
-        setLayout(new BorderLayout(8, 8));
+        setLayout(new BorderLayout(12, 12));
         setBackground(AppTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
-        UiUtil.applyTableStyle(table);
-        add(buildForm(), BorderLayout.NORTH);
-        add(AppTheme.scroll(table), BorderLayout.CENTER);
+        UiUtil.applyTableStyle(activeTable);
+        UiUtil.applyTableStyle(historyTable);
+        add(buildHeader(), BorderLayout.NORTH);
+        add(buildTables(), BorderLayout.CENTER);
         refresh();
     }
 
-    private JPanel buildForm() {
-        JPanel panel = AppTheme.surface(new GridLayout(2, 1, 0, 8));
-        JPanel info = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        info.setBackground(AppTheme.SURFACE);
-        info.add(AppTheme.sectionTitle("Pesanan Saya"));
-        info.add(AppTheme.muted("Pelanggan: " + pelanggan.getNamaLengkap() + " | " + pelanggan.getAlamat()));
+    private JPanel buildHeader() {
+        JPanel header = AppTheme.surface(new BorderLayout(10, 8));
 
-        JPanel form = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        form.setBackground(AppTheme.SURFACE);
-        AppTheme.styleSpinner(estimasiSpinner);
-        AppTheme.styleTextField(totalField);
-        AppTheme.styleTextField(catatanField);
-        form.add(new JLabel("Estimasi hari"));
-        form.add(estimasiSpinner);
-        form.add(new JLabel("Total"));
-        form.add(totalField);
-        form.add(new JLabel("Catatan"));
-        form.add(catatanField);
-        JButton createButton = AppTheme.primaryButton("Buat Pesanan");
-        createButton.addActionListener(event -> createOrder());
-        JButton refreshButton = AppTheme.secondaryButton("Refresh");
+        JPanel title = new JPanel(new GridLayout(2, 1, 0, 4));
+        title.setBackground(AppTheme.SURFACE);
+        title.add(AppTheme.sectionTitle("Status Laundry Saya"));
+        title.add(AppTheme.muted("Pelanggan: " + pelanggan.getNamaLengkap() + " | " + pelanggan.getAlamat()));
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        actions.setBackground(AppTheme.SURFACE);
+        JButton refreshButton = AppTheme.primaryButton("Refresh");
         refreshButton.addActionListener(event -> refresh());
-        form.add(createButton);
-        form.add(refreshButton);
+        actions.add(refreshButton);
 
-        panel.add(info);
-        panel.add(form);
-        return panel;
+        header.add(title, BorderLayout.CENTER);
+        header.add(summaryLabel, BorderLayout.SOUTH);
+        header.add(actions, BorderLayout.EAST);
+        return header;
+    }
+
+    private JPanel buildTables() {
+        JPanel content = new JPanel(new GridLayout(2, 1, 0, 12));
+        content.setBackground(AppTheme.BACKGROUND);
+        content.add(buildTableSection("Status Saat Ini", "Pesanan yang masih diproses atau siap diambil.", activeTable));
+        content.add(buildTableSection("Riwayat Pesanan", "Pesanan yang sudah selesai atau dibatalkan.", historyTable));
+        return content;
+    }
+
+    private JPanel buildTableSection(String title, String subtitle, JTable table) {
+        JPanel section = AppTheme.surface(new BorderLayout(0, 8));
+
+        JPanel heading = new JPanel(new GridLayout(2, 1, 0, 2));
+        heading.setBackground(AppTheme.SURFACE);
+        heading.add(AppTheme.sectionTitle(title));
+        heading.add(AppTheme.muted(subtitle));
+
+        section.add(heading, BorderLayout.NORTH);
+        section.add(AppTheme.scroll(table), BorderLayout.CENTER);
+        return section;
     }
 
     private void refresh() {
-        tableModel.setRowCount(0);
+        activeModel.setRowCount(0);
+        historyModel.setRowCount(0);
         try {
             List<Pesanan> rows = pesananController.getPesananPelanggan(pelanggan.getIdPelanggan());
+            int activeCount = 0;
+            int historyCount = 0;
             for (Pesanan pesanan : rows) {
-                tableModel.addRow(new Object[] {
-                        pesanan.getIdPesanan(),
-                        pesanan.getTanggalMasuk(),
-                        pesanan.getEstimasiSelesai(),
-                        pesanan.getStatusPesanan().getDisplayName(),
-                        UiUtil.money(pesanan.getTotalBiaya()),
-                        pesanan.getCatatan()
-                });
+                Object[] row = toRow(pesanan);
+                if (isHistory(pesanan)) {
+                    historyModel.addRow(row);
+                    historyCount++;
+                } else {
+                    activeModel.addRow(row);
+                    activeCount++;
+                }
             }
+            summaryLabel.setText(activeCount + " pesanan berjalan, " + historyCount + " riwayat pesanan.");
         } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal memuat pesanan pelanggan.", ex);
+            UiUtil.error(this, "Gagal memuat status laundry pelanggan.", ex);
         }
     }
 
-    private void createOrder() {
-        try {
-            String karyawanId = penggunaController.getDefaultKaryawanId();
-            if (karyawanId == null) {
-                UiUtil.info(this, "Belum ada karyawan untuk menerima pesanan.");
-                return;
-            }
-            pesananController.tambahPesanan(
-                    pelanggan.getIdPelanggan(),
-                    karyawanId,
-                    (Integer) estimasiSpinner.getValue(),
-                    Double.parseDouble(totalField.getText().trim()),
-                    catatanField.getText().trim());
-            catatanField.setText("");
-            refresh();
-        } catch (NumberFormatException ex) {
-            UiUtil.info(this, "Total biaya harus berupa angka.");
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal membuat pesanan.", ex);
-        }
+    private Object[] toRow(Pesanan pesanan) {
+        return new Object[] {
+                pesanan.getIdPesanan(),
+                pesanan.getTanggalMasuk(),
+                pesanan.getEstimasiSelesai(),
+                pesanan.getPaketLaundry().getDisplayName(),
+                String.format("%.2f kg", pesanan.getBeratKg()),
+                pesanan.getStatusPesanan().getDisplayName(),
+                UiUtil.money(pesanan.getTotalBiaya()),
+                pesanan.getCatatan()
+        };
+    }
+
+    private boolean isHistory(Pesanan pesanan) {
+        return pesanan.getStatusPesanan() == StatusPesanan.SELESAI
+                || pesanan.getStatusPesanan() == StatusPesanan.DIBATALKAN;
     }
 }

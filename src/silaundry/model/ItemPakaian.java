@@ -8,16 +8,18 @@ public class ItemPakaian {
     private String jenisPakaian;
     private KategoriWarna kategoriWarna;
     private String kondisiAwal;
+    private String deskripsiDetail;
     private String labelSmartGroup;
     private String kodeQR;
 
     public ItemPakaian(String idItem, String idPesanan, String jenisPakaian, KategoriWarna kategoriWarna,
-            String kondisiAwal, String labelSmartGroup, String kodeQR) {
+            String kondisiAwal, String deskripsiDetail, String labelSmartGroup, String kodeQR) {
         this.idItem = idItem;
         this.idPesanan = idPesanan;
         this.jenisPakaian = jenisPakaian;
         this.kategoriWarna = kategoriWarna;
         this.kondisiAwal = kondisiAwal;
+        this.deskripsiDetail = deskripsiDetail;
         this.labelSmartGroup = labelSmartGroup;
         this.kodeQR = kodeQR;
     }
@@ -68,6 +70,14 @@ public class ItemPakaian {
 
     public void setKondisiAwal(String kondisiAwal) {
         this.kondisiAwal = kondisiAwal;
+    }
+
+    public String getDeskripsiDetail() {
+        return deskripsiDetail;
+    }
+
+    public void setDeskripsiDetail(String deskripsiDetail) {
+        this.deskripsiDetail = deskripsiDetail;
     }
 
     public String getLabelSmartGroup() {

@@ -3,8 +3,6 @@ package silaundry.view;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
-import java.awt.GridLayout;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,10 +24,12 @@ import silaundry.controller.ItemController;
 import silaundry.controller.PembayaranController;
 import silaundry.controller.PenggunaController;
 import silaundry.controller.PesananController;
+import silaundry.controller.TarifController;
 import silaundry.model.ItemPakaian;
 import silaundry.model.Karyawan;
 import silaundry.model.Pelanggan;
 import silaundry.model.Pesanan;
+import silaundry.model.TarifLaundry;
 import silaundry.model.enums.KategoriWarna;
 import silaundry.model.enums.StatusPembayaran;
 import silaundry.model.enums.StatusPesanan;
@@ -43,21 +43,26 @@ public class KaryawanPanel extends JPanel {
     private final PenggunaController penggunaController = new PenggunaController();
     private final ItemController itemController = new ItemController();
     private final PembayaranController pembayaranController = new PembayaranController();
+    private final TarifController tarifController = new TarifController();
 
-    private final DefaultTableModel orderModel = UiUtil.model("ID", "Pelanggan", "Tanggal", "Estimasi", "Status", "Total", "Catatan");
+    private final DefaultTableModel orderModel = UiUtil.model("ID", "Pelanggan", "Tanggal", "Estimasi", "Paket",
+            "Berat", "Harga/kg", "Status", "Total", "Catatan");
     private final JTable orderTable = new JTable(orderModel);
     private final JComboBox<Pelanggan> pelangganCombo = new JComboBox<>();
     private final JComboBox<StatusPesanan> statusCombo = new JComboBox<>(StatusPesanan.values());
-    private final JSpinner estimasiSpinner = new JSpinner(new SpinnerNumberModel(2, 1, 14, 1));
-    private final JTextField totalField = new JTextField("30000", 9);
+    private final JComboBox<TarifLaundry> tarifCombo = new JComboBox<>();
+    private final JSpinner beratSpinner = new JSpinner(new SpinnerNumberModel(3.0, 0.1, 100.0, 0.1));
+    private final JLabel totalPreviewLabel = AppTheme.muted("Total otomatis: -");
     private final JTextField catatanField = new JTextField(22);
 
-    private final DefaultTableModel itemModel = UiUtil.model("ID", "Pesanan", "Jenis", "Warna", "Kondisi", "Smart Group", "Kode QR");
+    private final DefaultTableModel itemModel = UiUtil.model("ID", "Pesanan", "Jenis", "Warna", "Kondisi",
+            "Deskripsi Detail", "Smart Group", "Kode QR");
     private final JTable itemTable = new JTable(itemModel);
     private final JTextField itemOrderField = new JTextField(14);
     private final JTextField jenisField = new JTextField("Kaos", 12);
     private final JComboBox<KategoriWarna> warnaCombo = new JComboBox<>(KategoriWarna.values());
     private final JTextField kondisiField = new JTextField("Normal", 14);
+    private final JTextField deskripsiField = new JTextField("Merk/warna detail/ciri khusus", 24);
 
     private final JTextField paymentOrderField = new JTextField(14);
     private final JTextField paymentMethodField = new JTextField("Tunai", 10);
@@ -70,6 +75,8 @@ public class KaryawanPanel extends JPanel {
         setBackground(AppTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
         styleInputs();
+        tarifCombo.addActionListener(event -> updateTotalPreview());
+        beratSpinner.addChangeListener(event -> updateTotalPreview());
         contentPanel.setBackground(AppTheme.BACKGROUND);
         contentPanel.add(buildOrderPanel(), "Pesanan");
         contentPanel.add(buildItemPanel(), "Item Pakaian");
@@ -121,6 +128,8 @@ public class KaryawanPanel extends JPanel {
         JButton button = new JButton(text);
         button.setHorizontalAlignment(JButton.LEFT);
         button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
         button.setBackground(AppTheme.SURFACE);
         button.setForeground(AppTheme.TEXT);
         button.setBorder(BorderFactory.createCompoundBorder(
@@ -149,22 +158,20 @@ public class KaryawanPanel extends JPanel {
     }
 
     private JPanel buildOrderForm() {
-        JPanel container = AppTheme.surface(new GridLayout(2, 1, 0, 8));
-        JPanel title = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel container = AppTheme.surface(new BorderLayout(0, 12));
+        JPanel title = new JPanel(new BorderLayout(0, 4));
         title.setBackground(AppTheme.SURFACE);
-        title.add(AppTheme.sectionTitle("Manajemen Pesanan"));
-        title.add(AppTheme.muted("Karyawan: " + karyawan.getNamaLengkap() + " | Shift " + karyawan.getShiftKerja()));
+        title.add(AppTheme.sectionTitle("Manajemen Pesanan"), BorderLayout.NORTH);
+        title.add(AppTheme.muted("Karyawan: " + karyawan.getNamaLengkap() + " | Shift " + karyawan.getShiftKerja()),
+                BorderLayout.CENTER);
 
-        JPanel form = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        form.setBackground(AppTheme.SURFACE);
-        form.add(new JLabel("Pelanggan"));
-        form.add(pelangganCombo);
-        form.add(new JLabel("Estimasi"));
-        form.add(estimasiSpinner);
-        form.add(new JLabel("Total"));
-        form.add(totalField);
-        form.add(new JLabel("Catatan"));
-        form.add(catatanField);
+        JPanel fields = AppTheme.formGrid();
+        AppTheme.addField(fields, 0, 0, "Pelanggan", pelangganCombo);
+        AppTheme.addField(fields, 0, 1, "Paket", tarifCombo);
+        AppTheme.addField(fields, 1, 0, "Berat kg", beratSpinner);
+        AppTheme.addField(fields, 1, 1, "Status update", statusCombo);
+        AppTheme.addField(fields, 2, 0, "Total otomatis", totalPreviewLabel);
+        AppTheme.addWideField(fields, 3, "Catatan", catatanField);
 
         JButton createButton = AppTheme.primaryButton("Tambah");
         createButton.addActionListener(event -> createOrder());
@@ -175,14 +182,15 @@ public class KaryawanPanel extends JPanel {
         JButton refreshButton = AppTheme.secondaryButton("Refresh");
         refreshButton.addActionListener(event -> refreshAll());
 
-        form.add(statusCombo);
-        form.add(createButton);
-        form.add(statusButton);
-        form.add(deleteButton);
-        form.add(refreshButton);
+        JPanel actions = AppTheme.actionRow();
+        actions.add(createButton);
+        actions.add(statusButton);
+        actions.add(deleteButton);
+        actions.add(refreshButton);
 
-        container.add(title);
-        container.add(form);
+        container.add(title, BorderLayout.NORTH);
+        container.add(fields, BorderLayout.CENTER);
+        container.add(actions, BorderLayout.SOUTH);
         return container;
     }
 
@@ -190,16 +198,15 @@ public class KaryawanPanel extends JPanel {
         JPanel panel = AppTheme.page(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         UiUtil.applyTableStyle(itemTable);
-        JPanel form = AppTheme.surface(new FlowLayout(FlowLayout.LEFT));
-        form.add(AppTheme.sectionTitle("Data Item"));
-        form.add(new JLabel("ID Pesanan"));
-        form.add(itemOrderField);
-        form.add(new JLabel("Jenis"));
-        form.add(jenisField);
-        form.add(new JLabel("Warna"));
-        form.add(warnaCombo);
-        form.add(new JLabel("Kondisi"));
-        form.add(kondisiField);
+        JPanel form = AppTheme.surface(new BorderLayout(0, 12));
+        form.add(AppTheme.sectionTitle("Data Item"), BorderLayout.NORTH);
+
+        JPanel fields = AppTheme.formGrid();
+        AppTheme.addField(fields, 0, 0, "ID Pesanan", itemOrderField);
+        AppTheme.addField(fields, 0, 1, "Jenis", jenisField);
+        AppTheme.addField(fields, 1, 0, "Warna", warnaCombo);
+        AppTheme.addField(fields, 1, 1, "Kondisi", kondisiField);
+        AppTheme.addWideField(fields, 2, "Deskripsi", deskripsiField);
 
         JButton addButton = AppTheme.primaryButton("Tambah Item");
         addButton.addActionListener(event -> addItem());
@@ -210,10 +217,13 @@ public class KaryawanPanel extends JPanel {
         JButton refreshButton = AppTheme.secondaryButton("Refresh");
         refreshButton.addActionListener(event -> refreshItems());
 
-        form.add(addButton);
-        form.add(groupButton);
-        form.add(deleteButton);
-        form.add(refreshButton);
+        JPanel actions = AppTheme.actionRow();
+        actions.add(addButton);
+        actions.add(groupButton);
+        actions.add(deleteButton);
+        actions.add(refreshButton);
+        form.add(fields, BorderLayout.CENTER);
+        form.add(actions, BorderLayout.SOUTH);
         panel.add(form, BorderLayout.NORTH);
         panel.add(AppTheme.scroll(itemTable), BorderLayout.CENTER);
         return panel;
@@ -222,21 +232,24 @@ public class KaryawanPanel extends JPanel {
     private JPanel buildPaymentPanel() {
         JPanel page = AppTheme.page(new BorderLayout());
         page.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
-        JPanel panel = AppTheme.surface(new FlowLayout(FlowLayout.LEFT));
-        panel.add(AppTheme.sectionTitle("Pembayaran"));
-        panel.add(new JLabel("ID Pesanan"));
-        panel.add(paymentOrderField);
-        panel.add(new JLabel("Metode"));
-        panel.add(paymentMethodField);
-        panel.add(new JLabel("Jumlah"));
-        panel.add(paymentAmountField);
-        panel.add(paymentStatusCombo);
+        JPanel panel = AppTheme.surface(new BorderLayout(0, 12));
+        panel.add(AppTheme.sectionTitle("Pembayaran"), BorderLayout.NORTH);
+
+        JPanel fields = AppTheme.formGrid();
+        AppTheme.addField(fields, 0, 0, "ID Pesanan", paymentOrderField);
+        AppTheme.addField(fields, 0, 1, "Metode", paymentMethodField);
+        AppTheme.addField(fields, 1, 0, "Jumlah", paymentAmountField);
+        AppTheme.addField(fields, 1, 1, "Status", paymentStatusCombo);
+
         JButton fromSelectionButton = AppTheme.secondaryButton("Ambil Pesanan Terpilih");
         fromSelectionButton.addActionListener(event -> copySelectedOrderToPayment());
         JButton saveButton = AppTheme.primaryButton("Simpan Pembayaran");
         saveButton.addActionListener(event -> savePayment());
-        panel.add(fromSelectionButton);
-        panel.add(saveButton);
+        JPanel actions = AppTheme.actionRow();
+        actions.add(fromSelectionButton);
+        actions.add(saveButton);
+        panel.add(fields, BorderLayout.CENTER);
+        panel.add(actions, BorderLayout.SOUTH);
         page.add(panel, BorderLayout.NORTH);
         page.add(AppTheme.muted("Pilih pesanan di menu Pesanan untuk mengisi ID otomatis, lalu simpan status pembayaran."), BorderLayout.CENTER);
         return page;
@@ -245,14 +258,15 @@ public class KaryawanPanel extends JPanel {
     private void styleInputs() {
         AppTheme.styleComboBox(pelangganCombo);
         AppTheme.styleComboBox(statusCombo);
+        AppTheme.styleComboBox(tarifCombo);
         AppTheme.styleComboBox(warnaCombo);
         AppTheme.styleComboBox(paymentStatusCombo);
-        AppTheme.styleSpinner(estimasiSpinner);
-        AppTheme.styleTextField(totalField);
+        AppTheme.styleSpinner(beratSpinner);
         AppTheme.styleTextField(catatanField);
         AppTheme.styleTextField(itemOrderField);
         AppTheme.styleTextField(jenisField);
         AppTheme.styleTextField(kondisiField);
+        AppTheme.styleTextField(deskripsiField);
         AppTheme.styleTextField(paymentOrderField);
         AppTheme.styleTextField(paymentMethodField);
         AppTheme.styleTextField(paymentAmountField);
@@ -260,8 +274,25 @@ public class KaryawanPanel extends JPanel {
 
     private void refreshAll() {
         refreshCustomers();
+        refreshTarif();
         refreshOrders();
         refreshItems();
+    }
+
+    private void refreshTarif() {
+        TarifLaundry selectedTarif = (TarifLaundry) tarifCombo.getSelectedItem();
+        tarifCombo.removeAllItems();
+        try {
+            for (TarifLaundry tarif : tarifController.getTarifAktif()) {
+                tarifCombo.addItem(tarif);
+                if (selectedTarif != null && tarif.getPaketLaundry() == selectedTarif.getPaketLaundry()) {
+                    tarifCombo.setSelectedItem(tarif);
+                }
+            }
+            updateTotalPreview();
+        } catch (SQLException ex) {
+            UiUtil.error(this, "Gagal memuat tarif laundry.", ex);
+        }
     }
 
     private void refreshCustomers() {
@@ -285,6 +316,9 @@ public class KaryawanPanel extends JPanel {
                         pesanan.getNamaPelanggan(),
                         pesanan.getTanggalMasuk(),
                         pesanan.getEstimasiSelesai(),
+                        pesanan.getPaketLaundry().getDisplayName(),
+                        String.format("%.2f kg", pesanan.getBeratKg()),
+                        UiUtil.money(pesanan.getHargaPerKg()),
                         pesanan.getStatusPesanan().getDisplayName(),
                         UiUtil.money(pesanan.getTotalBiaya()),
                         pesanan.getCatatan()
@@ -305,6 +339,7 @@ public class KaryawanPanel extends JPanel {
                         item.getJenisPakaian(),
                         item.getKategoriWarna().getDisplayName(),
                         item.getKondisiAwal(),
+                        item.getDeskripsiDetail(),
                         item.getLabelSmartGroup(),
                         item.getKodeQR()
                 });
@@ -316,21 +351,26 @@ public class KaryawanPanel extends JPanel {
 
     private void createOrder() {
         Pelanggan pelanggan = (Pelanggan) pelangganCombo.getSelectedItem();
+        TarifLaundry tarif = (TarifLaundry) tarifCombo.getSelectedItem();
         if (pelanggan == null) {
             UiUtil.info(this, "Pilih pelanggan terlebih dahulu.");
+            return;
+        }
+        if (tarif == null) {
+            UiUtil.info(this, "Pilih paket laundry terlebih dahulu.");
             return;
         }
         try {
             pesananController.tambahPesanan(
                     pelanggan.getIdPelanggan(),
                     karyawan.getIdKaryawan(),
-                    (Integer) estimasiSpinner.getValue(),
-                    Double.parseDouble(totalField.getText().trim()),
+                    tarif.getPaketLaundry(),
+                    getBeratKg(),
                     catatanField.getText().trim());
             catatanField.setText("");
             refreshOrders();
-        } catch (NumberFormatException ex) {
-            UiUtil.info(this, "Total biaya harus berupa angka.");
+        } catch (IllegalArgumentException ex) {
+            UiUtil.info(this, ex.getMessage());
         } catch (SQLException ex) {
             UiUtil.error(this, "Gagal menambah pesanan.", ex);
         }
@@ -376,7 +416,8 @@ public class KaryawanPanel extends JPanel {
                     idPesanan,
                     jenisField.getText().trim(),
                     (KategoriWarna) warnaCombo.getSelectedItem(),
-                    kondisiField.getText().trim());
+                    kondisiField.getText().trim(),
+                    deskripsiField.getText().trim());
             refreshItems();
         } catch (SQLException ex) {
             UiUtil.error(this, "Gagal menambah item pakaian.", ex);
@@ -420,6 +461,14 @@ public class KaryawanPanel extends JPanel {
         }
         paymentOrderField.setText(idPesanan);
         itemOrderField.setText(idPesanan);
+        try {
+            Pesanan pesanan = pesananController.getPesanan(idPesanan);
+            if (pesanan != null) {
+                paymentAmountField.setText(String.valueOf(Math.round(pesanan.getTotalBiaya())));
+            }
+        } catch (SQLException ex) {
+            UiUtil.error(this, "Gagal mengambil total pesanan.", ex);
+        }
     }
 
     private void savePayment() {
@@ -451,5 +500,23 @@ public class KaryawanPanel extends JPanel {
             itemOrderField.setText(idPesanan);
             paymentOrderField.setText(idPesanan);
         }
+    }
+
+    private double getBeratKg() {
+        Object value = beratSpinner.getValue();
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return Double.parseDouble(value.toString());
+    }
+
+    private void updateTotalPreview() {
+        TarifLaundry tarif = (TarifLaundry) tarifCombo.getSelectedItem();
+        if (tarif == null) {
+            totalPreviewLabel.setText("Total otomatis: -");
+            return;
+        }
+        double total = tarif.hitungTotal(getBeratKg());
+        totalPreviewLabel.setText("Total otomatis: " + UiUtil.money(total));
     }
 }
