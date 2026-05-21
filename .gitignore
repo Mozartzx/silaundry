@@ -1,0 +1,10 @@
+/build/
+/dist/
+lib/*.jar
+*.class
+*.log
+*.tmp
+/.idea/
+/.vscode/
+*.nbattrs
+nbproject/private/

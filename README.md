@@ -245,23 +245,49 @@ classDiagram
 - **IDE**: Apache NetBeans
 - **Paradigm**: Object-Oriented Programming (OOP)
 - **GUI**: Java Swing/AWT
+- **Database**: MySQL/XAMPP via JDBC
 - **Design Pattern**: MVC (Model-View-Controller)
 
 ## 🚀 Cara Menjalankan
 
 1. **Clone repository**
 ```bash
-   git clone https://github.com/[username]/SILAUNDRY.git
-   cd SILAUNDRY
+   git clone https://github.com/Mozartzx/silaundry.git
+   cd silaundry
 ```
 
-2. **Buka di NetBeans**
+2. **Siapkan database**
+   - Jalankan MySQL dari XAMPP
+   - Import file `database/silaundry_schema.sql` melalui phpMyAdmin atau MySQL client
+   - Jika username/password MySQL berbeda, ubah `config/db.properties`
+   - Jika database lama sudah pernah di-import dan tidak ingin drop ulang, jalankan `database/migrate_realistic_login_schema.sql`
+
+3. **Siapkan JDBC driver**
+   - Unduh MySQL Connector/J
+   - Letakkan file `.jar` di folder `lib/`
+   - Rename menjadi `mysql-connector-j.jar`
+
+4. **Buka di NetBeans**
    - File → Open Project
    - Pilih folder SILAUNDRY
 
-3. **Build & Run**
+5. **Build & Run**
    - Klik kanan pada project → Clean and Build
    - Run Main File
+
+### Akun Seed
+
+| Role | Username | Password |
+|------|----------|----------|
+| Pemilik | `Mozart` | `123` |
+| Karyawan | `karyawan` | `karyawan123` |
+| Pelanggan | `pelanggan` | `pelanggan123` |
+
+Catatan:
+- Role pemilik hanya disediakan satu akun seed dan tidak dibuat dari menu register.
+- Karyawan ditambahkan dari dashboard pemilik.
+- Pelanggan dapat membuat akun sendiri melalui tombol **Daftar Pelanggan** di halaman login.
+- Struktur database memakai `pengguna` sebagai tabel parent untuk login/role, sedangkan `pelanggan`, `karyawan`, dan `pemilik` hanya menyimpan atribut khusus masing-masing role.
 
 ## 📊 Fitur Utama
 

@@ -1,0 +1,235 @@
+DROP DATABASE IF EXISTS silaundry_db;
+CREATE DATABASE silaundry_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE silaundry_db;
+
+CREATE TABLE pengguna (
+    id_pengguna VARCHAR(20) PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    nama_lengkap VARCHAR(100) NOT NULL,
+    nomor_telepon VARCHAR(20) NOT NULL,
+    kata_sandi CHAR(64) NOT NULL,
+    role ENUM('PEMILIK','KARYAWAN','PELANGGAN') NOT NULL,
+    aktif BOOLEAN NOT NULL DEFAULT TRUE,
+    dibuat_pada TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    diperbarui_pada TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    terakhir_login DATETIME,
+    pemilik_guard TINYINT GENERATED ALWAYS AS (
+        CASE WHEN role = 'PEMILIK' THEN 1 ELSE NULL END
+    ) STORED,
+    UNIQUE KEY uq_pengguna_username (username),
+    UNIQUE KEY uq_satu_pemilik (pemilik_guard),
+    INDEX idx_pengguna_login (username, kata_sandi, role, aktif),
+    INDEX idx_pengguna_role_aktif (role, aktif),
+    CONSTRAINT chk_pengguna_password_sha CHECK (CHAR_LENGTH(kata_sandi) = 64),
+    CONSTRAINT chk_pengguna_telepon CHECK (CHAR_LENGTH(nomor_telepon) BETWEEN 8 AND 20)
+);
+
+CREATE TABLE pelanggan (
+    id_pelanggan VARCHAR(20) PRIMARY KEY,
+    id_pengguna VARCHAR(20) NOT NULL UNIQUE,
+    alamat VARCHAR(255) NOT NULL,
+    FOREIGN KEY (id_pengguna) REFERENCES pengguna(id_pengguna)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT chk_pelanggan_alamat CHECK (CHAR_LENGTH(alamat) >= 5)
+);
+
+CREATE TABLE karyawan (
+    id_karyawan VARCHAR(20) PRIMARY KEY,
+    id_pengguna VARCHAR(20) NOT NULL UNIQUE,
+    shift_kerja VARCHAR(30) NOT NULL,
+    FOREIGN KEY (id_pengguna) REFERENCES pengguna(id_pengguna)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT chk_karyawan_shift CHECK (CHAR_LENGTH(shift_kerja) >= 3)
+);
+
+CREATE TABLE pemilik (
+    id_pemilik VARCHAR(20) PRIMARY KEY,
+    id_pengguna VARCHAR(20) NOT NULL UNIQUE,
+    FOREIGN KEY (id_pengguna) REFERENCES pengguna(id_pengguna)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE mesin_cuci (
+    id_mesin VARCHAR(20) PRIMARY KEY,
+    nama_mesin VARCHAR(50) NOT NULL,
+    kapasitas DECIMAL(5,2) NOT NULL,
+    status ENUM('TERSEDIA','DIGUNAKAN','PERAWATAN') NOT NULL DEFAULT 'TERSEDIA',
+    CONSTRAINT chk_mesin_kapasitas CHECK (kapasitas > 0)
+);
+
+CREATE TABLE pesanan (
+    id_pesanan VARCHAR(20) PRIMARY KEY,
+    id_pelanggan VARCHAR(20) NOT NULL,
+    id_karyawan VARCHAR(20),
+    tanggal_masuk DATE NOT NULL,
+    estimasi_selesai DATE NOT NULL,
+    status_pesanan ENUM('BARU','DITERIMA','DIPROSES','DICUCI','DIKERINGKAN','DISETRIKA','SIAP_DIAMBIL','SELESAI','DIBATALKAN') NOT NULL DEFAULT 'BARU',
+    total_biaya DECIMAL(12,2) NOT NULL DEFAULT 0,
+    catatan TEXT,
+    FOREIGN KEY (id_pelanggan) REFERENCES pelanggan(id_pelanggan)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    FOREIGN KEY (id_karyawan) REFERENCES karyawan(id_karyawan)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_pesanan_pelanggan_status (id_pelanggan, status_pesanan),
+    INDEX idx_pesanan_karyawan_status (id_karyawan, status_pesanan),
+    INDEX idx_pesanan_tanggal (tanggal_masuk),
+    CONSTRAINT chk_pesanan_estimasi CHECK (estimasi_selesai >= tanggal_masuk),
+    CONSTRAINT chk_pesanan_total CHECK (total_biaya >= 0)
+);
+
+CREATE TABLE item_pakaian (
+    id_item VARCHAR(20) PRIMARY KEY,
+    id_pesanan VARCHAR(20) NOT NULL,
+    jenis_pakaian VARCHAR(60) NOT NULL,
+    kategori_warna ENUM('PUTIH','TERANG','GELAP','MUDAH_LUNTUR') NOT NULL,
+    kondisi_awal VARCHAR(120) NOT NULL,
+    label_smart_group VARCHAR(60) NOT NULL,
+    kode_qr VARCHAR(60) NOT NULL UNIQUE,
+    FOREIGN KEY (id_pesanan) REFERENCES pesanan(id_pesanan)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    INDEX idx_item_pesanan (id_pesanan),
+    INDEX idx_item_warna_group (kategori_warna, label_smart_group)
+);
+
+CREATE TABLE proses_laundry (
+    id_proses VARCHAR(20) PRIMARY KEY,
+    id_pesanan VARCHAR(20) NOT NULL,
+    id_mesin VARCHAR(20),
+    tahap ENUM('PENERIMAAN','PENCUCIAN','PENGERINGAN','PENYETRIKAAN','PENGEMASAN','SELESAI') NOT NULL,
+    waktu_mulai DATETIME NOT NULL,
+    waktu_selesai DATETIME,
+    FOREIGN KEY (id_pesanan) REFERENCES pesanan(id_pesanan)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (id_mesin) REFERENCES mesin_cuci(id_mesin)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_proses_pesanan (id_pesanan),
+    INDEX idx_proses_mesin (id_mesin),
+    CONSTRAINT chk_proses_waktu CHECK (waktu_selesai IS NULL OR waktu_selesai >= waktu_mulai)
+);
+
+CREATE TABLE pembayaran (
+    id_pembayaran VARCHAR(20) PRIMARY KEY,
+    id_pesanan VARCHAR(20) NOT NULL UNIQUE,
+    metode VARCHAR(30) NOT NULL,
+    jumlah DECIMAL(12,2) NOT NULL,
+    status ENUM('BELUM_BAYAR','SEBAGIAN','LUNAS','DIBATALKAN') NOT NULL DEFAULT 'BELUM_BAYAR',
+    FOREIGN KEY (id_pesanan) REFERENCES pesanan(id_pesanan)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    INDEX idx_pembayaran_status (status),
+    CONSTRAINT chk_pembayaran_jumlah CHECK (jumlah >= 0)
+);
+
+CREATE TABLE detail_pembayaran (
+    id_detail VARCHAR(20) PRIMARY KEY,
+    id_pembayaran VARCHAR(20) NOT NULL,
+    waktu_bayar DATETIME NOT NULL,
+    keterangan VARCHAR(150),
+    FOREIGN KEY (id_pembayaran) REFERENCES pembayaran(id_pembayaran)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    INDEX idx_detail_pembayaran (id_pembayaran)
+);
+
+CREATE TABLE notifikasi (
+    id_notifikasi VARCHAR(20) PRIMARY KEY,
+    id_pesanan VARCHAR(20) NOT NULL,
+    pesan VARCHAR(255) NOT NULL,
+    tanggal_kirim DATETIME NOT NULL,
+    sudah_dibaca BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (id_pesanan) REFERENCES pesanan(id_pesanan)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    INDEX idx_notifikasi_pesanan_baca (id_pesanan, sudah_dibaca)
+);
+
+DELIMITER $$
+
+CREATE TRIGGER trg_pengguna_owner_insert
+BEFORE INSERT ON pengguna
+FOR EACH ROW
+BEGIN
+    IF NEW.role = 'PEMILIK' AND NEW.username <> 'Mozart' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Akun pemilik hanya boleh menggunakan username Mozart.';
+    END IF;
+END$$
+
+CREATE TRIGGER trg_pengguna_owner_update
+BEFORE UPDATE ON pengguna
+FOR EACH ROW
+BEGIN
+    IF NEW.role = 'PEMILIK' AND NEW.username <> 'Mozart' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Akun pemilik hanya boleh menggunakan username Mozart.';
+    END IF;
+END$$
+
+CREATE TRIGGER trg_pelanggan_role_insert
+BEFORE INSERT ON pelanggan
+FOR EACH ROW
+BEGIN
+    IF COALESCE((SELECT role FROM pengguna WHERE id_pengguna = NEW.id_pengguna), '') <> 'PELANGGAN' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Data pelanggan harus terhubung ke pengguna role PELANGGAN.';
+    END IF;
+END$$
+
+CREATE TRIGGER trg_karyawan_role_insert
+BEFORE INSERT ON karyawan
+FOR EACH ROW
+BEGIN
+    IF COALESCE((SELECT role FROM pengguna WHERE id_pengguna = NEW.id_pengguna), '') <> 'KARYAWAN' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Data karyawan harus terhubung ke pengguna role KARYAWAN.';
+    END IF;
+END$$
+
+CREATE TRIGGER trg_pemilik_role_insert
+BEFORE INSERT ON pemilik
+FOR EACH ROW
+BEGIN
+    IF COALESCE((SELECT role FROM pengguna WHERE id_pengguna = NEW.id_pengguna), '') <> 'PEMILIK' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Data pemilik harus terhubung ke pengguna role PEMILIK.';
+    END IF;
+END$$
+
+DELIMITER ;
+
+INSERT INTO pengguna (id_pengguna, username, nama_lengkap, nomor_telepon, kata_sandi, role) VALUES
+('USR001', 'Mozart', 'Fanan Agfian Mozart', '081200000001', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'PEMILIK'),
+('USR002', 'karyawan', 'Ammar Farras Hanindhiya Bastian', '081200000002', '4b544df5bd793515057a6ae1e49a44c57f038333dcd9a1e6af0d6cca04e1fac3', 'KARYAWAN'),
+('USR003', 'pelanggan', 'Grace Jessica', '081200000003', 'c72b07da279dcd31547fbce04ba65815266ae8689b0fe069ad9080502c57b264', 'PELANGGAN'),
+('USR004', 'naufal', 'Naufal Indra Washikita', '081200000004', 'c72b07da279dcd31547fbce04ba65815266ae8689b0fe069ad9080502c57b264', 'PELANGGAN');
+
+INSERT INTO pemilik (id_pemilik, id_pengguna) VALUES
+('OWN001', 'USR001');
+
+INSERT INTO karyawan (id_karyawan, id_pengguna, shift_kerja) VALUES
+('KRY001', 'USR002', 'Pagi');
+
+INSERT INTO pelanggan (id_pelanggan, id_pengguna, alamat) VALUES
+('PLG001', 'USR003', 'Jl. Telekomunikasi No. 1, Bandung'),
+('PLG002', 'USR004', 'Jl. Sukapura No. 12, Bandung');
+
+INSERT INTO mesin_cuci (id_mesin, nama_mesin, kapasitas, status) VALUES
+('MSN001', 'Mesin A', 8.00, 'TERSEDIA'),
+('MSN002', 'Mesin B', 10.00, 'TERSEDIA'),
+('MSN003', 'Mesin C', 12.00, 'PERAWATAN');
+
+INSERT INTO pesanan (id_pesanan, id_pelanggan, id_karyawan, tanggal_masuk, estimasi_selesai, status_pesanan, total_biaya, catatan) VALUES
+('ORD001', 'PLG001', 'KRY001', CURRENT_DATE(), DATE_ADD(CURRENT_DATE(), INTERVAL 2 DAY), 'DIPROSES', 45000, 'Cuci lipat reguler'),
+('ORD002', 'PLG002', 'KRY001', CURRENT_DATE(), DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY), 'SIAP_DIAMBIL', 30000, 'Prioritas warna gelap');
+
+INSERT INTO item_pakaian (id_item, id_pesanan, jenis_pakaian, kategori_warna, kondisi_awal, label_smart_group, kode_qr) VALUES
+('ITM001', 'ORD001', 'Kemeja', 'PUTIH', 'Normal', 'Grup Putih', 'QR-ITM001'),
+('ITM002', 'ORD001', 'Celana Jeans', 'GELAP', 'Sedikit luntur', 'Grup Gelap', 'QR-ITM002'),
+('ITM003', 'ORD002', 'Kaos Merah', 'MUDAH_LUNTUR', 'Warna kuat', 'Grup Mudah Luntur', 'QR-ITM003');
+
+INSERT INTO pembayaran (id_pembayaran, id_pesanan, metode, jumlah, status) VALUES
+('PAY001', 'ORD001', 'Tunai', 45000, 'BELUM_BAYAR'),
+('PAY002', 'ORD002', 'QRIS', 30000, 'LUNAS');
+
+INSERT INTO detail_pembayaran (id_detail, id_pembayaran, waktu_bayar, keterangan) VALUES
+('DPY001', 'PAY002', NOW(), 'Pembayaran lunas via QRIS');
+
+INSERT INTO notifikasi (id_notifikasi, id_pesanan, pesan, tanggal_kirim) VALUES
+('NTF001', 'ORD002', 'Pesanan ORD002 sudah siap diambil.', NOW());
