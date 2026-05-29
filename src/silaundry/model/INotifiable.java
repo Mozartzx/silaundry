@@ -1,7 +1,7 @@
 package silaundry.model;
 
-public interface INotifiable {
-    int getId();
+import java.sql.SQLException;
 
-    void kirimNotifikasi();
+public interface INotifiable {
+    void kirimNotifikasi(Notifikasi notifikasi) throws SQLException;
 }

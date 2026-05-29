@@ -180,15 +180,27 @@ classDiagram
     %% Notification Interface and Class
     class INotifiable {
         <<interface>>
-        -id: int
-        +kirimNotifikasi(): void
+        +kirimNotifikasi(notifikasi: Notifikasi): void
     }
 
     class Notifikasi {
         -idNotifikasi: String
+        -idPesanan: String
         -pesan: String
         -tanggalKirim: String
-        +kirimNotifikasi(): void
+        -sudahDibaca: boolean
+    }
+
+    class AppNotifikasi {
+        +kirimNotifikasi(notifikasi: Notifikasi): void
+        +tampilkanDiAplikasi(notifikasi: Notifikasi): String
+    }
+
+    class WhatsAppNotifikasi {
+        -nomorTujuan: String
+        -linkWhatsApp: String
+        +kirimNotifikasi(notifikasi: Notifikasi): void
+        +generateLinkWhatsApp(pesan: String): String
     }
 
     %% Relationships - Inheritance
@@ -197,7 +209,8 @@ classDiagram
     Pengguna <|-- Pemilik : Extends
 
     %% Relationships - Interface Implementation
-    INotifiable <|.. Notifikasi : Implements
+    INotifiable <|.. AppNotifikasi : Implements
+    INotifiable <|.. WhatsAppNotifikasi : Implements
 
     %% Relationships - Associations (dari gambar)
     Pelanggan --> Pesanan : memantau
@@ -210,7 +223,10 @@ classDiagram
     Pesanan --> TarifLaundry : memakai snapshot harga
     Pesanan *-- ItemPakaian : mengandung
     Pesanan --> Pembayaran : memiliki
-    Notifikasi --> Pesanan : mengirim
+    Pesanan --> Notifikasi : menghasilkan
+    AppNotifikasi --> Notifikasi : menyimpan dan menampilkan
+    WhatsAppNotifikasi --> Notifikasi : membuat template pesan
+    WhatsAppNotifikasi --> Pelanggan : memakai nomor telepon
     Pesanan ..> SmartGroupingService : dikelompokkan
     
     ItemPakaian --> ItemTrackingService : dilacak
@@ -612,7 +628,7 @@ ItemController ..> IdGenerator
 
 **Modul C: Layanan Sistem**
 - `Pembayaran` & `DetailPembayaran` - Manajemen transaksi
-- `INotifiable` (Interface) & `Notifikasi` - Sistem notifikasi
+- `INotifiable`, `AppNotifikasi`, `WhatsAppNotifikasi`, dan `Notifikasi` - Sistem notifikasi aplikasi dan template link WhatsApp
 - `DataDasbor` - Dashboard metrik real-time
 - `LaporanKeuangan` - Laporan keuangan periodik
 
@@ -691,7 +707,7 @@ Catatan:
 - 📱 Lacak status cucian secara real-time
 - Lihat pesanan yang sedang berjalan
 - Lihat riwayat pesanan selesai atau dibatalkan
-- 🔔 Notifikasi otomatis saat proses selesai
+- 🔔 Melihat notifikasi aplikasi saat pesanan siap diambil atau selesai
 
 ### Untuk Karyawan
 - Hitung total otomatis berdasarkan paket dan berat kilo
@@ -700,6 +716,7 @@ Catatan:
 - 📦 Rekam data pakaian per item
 - 🎨 Eksekusi Smart Grouping
 - 🔄 Update status operasional
+- Membuat template link WhatsApp dari pesanan terpilih
 
 ### Untuk Owner/Pemilik
 - Kelola harga per kilo untuk paket Standard 2 Hari dan Express 1 Hari

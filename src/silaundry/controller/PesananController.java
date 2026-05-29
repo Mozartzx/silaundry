@@ -14,6 +14,7 @@ import silaundry.util.IdGenerator;
 public class PesananController {
     private final PesananDAO pesananDAO = new PesananDAO();
     private final TarifLaundryDAO tarifLaundryDAO = new TarifLaundryDAO();
+    private final NotifikasiController notifikasiController = new NotifikasiController();
 
     public List<Pesanan> getAllPesanan() throws SQLException {
         return pesananDAO.findAll();
@@ -54,6 +55,10 @@ public class PesananController {
 
     public void updateStatus(String idPesanan, StatusPesanan statusPesanan) throws SQLException {
         pesananDAO.updateStatus(idPesanan, statusPesanan);
+        Pesanan pesanan = pesananDAO.findById(idPesanan);
+        if (pesanan != null) {
+            notifikasiController.kirimNotifikasiStatus(pesanan);
+        }
     }
 
     public void hapusPesanan(String idPesanan) throws SQLException {

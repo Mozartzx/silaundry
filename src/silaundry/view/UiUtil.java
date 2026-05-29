@@ -76,14 +76,14 @@ public final class UiUtil {
     private static int preferredColumnWidth(String columnName) {
         return switch (columnName) {
             case "ID", "Pesanan" -> 130;
-            case "Tanggal", "Estimasi", "Selesai/Estimasi" -> 115;
+            case "Tanggal", "Estimasi", "Selesai/Estimasi", "Waktu" -> 150;
             case "Pelanggan", "Nama", "Username" -> 170;
             case "Paket" -> 150;
-            case "Berat", "Harga/kg", "Total", "Jumlah", "Status", "Aktif", "Shift" -> 115;
+            case "Berat", "Harga/kg", "Total", "Jumlah", "Status", "Aktif", "Shift", "Status Baca" -> 120;
             case "Telepon", "Kode QR" -> 135;
             case "Jenis", "Warna", "Kondisi", "Metode" -> 140;
             case "Smart Group" -> 155;
-            case "Deskripsi Detail", "Catatan" -> 260;
+            case "Deskripsi Detail", "Catatan", "Pesan" -> 300;
             default -> 140;
         };
     }

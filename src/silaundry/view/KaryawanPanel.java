@@ -3,6 +3,8 @@ package silaundry.view;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import silaundry.controller.ItemController;
+import silaundry.controller.NotifikasiController;
 import silaundry.controller.PembayaranController;
 import silaundry.controller.PenggunaController;
 import silaundry.controller.PesananController;
@@ -44,6 +47,7 @@ public class KaryawanPanel extends JPanel {
     private final ItemController itemController = new ItemController();
     private final PembayaranController pembayaranController = new PembayaranController();
     private final TarifController tarifController = new TarifController();
+    private final NotifikasiController notifikasiController = new NotifikasiController();
 
     private final DefaultTableModel orderModel = UiUtil.model("ID", "Pelanggan", "Tanggal", "Estimasi", "Paket",
             "Berat", "Harga/kg", "Status", "Total", "Catatan");
@@ -177,6 +181,8 @@ public class KaryawanPanel extends JPanel {
         createButton.addActionListener(event -> createOrder());
         JButton statusButton = AppTheme.secondaryButton("Update Status");
         statusButton.addActionListener(event -> updateStatus());
+        JButton whatsappButton = AppTheme.secondaryButton("Template WhatsApp");
+        whatsappButton.addActionListener(event -> buatTemplateWhatsApp());
         JButton deleteButton = AppTheme.dangerButton("Hapus");
         deleteButton.addActionListener(event -> deleteOrder());
         JButton refreshButton = AppTheme.secondaryButton("Refresh");
@@ -185,6 +191,7 @@ public class KaryawanPanel extends JPanel {
         JPanel actions = AppTheme.actionRow();
         actions.add(createButton);
         actions.add(statusButton);
+        actions.add(whatsappButton);
         actions.add(deleteButton);
         actions.add(refreshButton);
 
@@ -385,8 +392,29 @@ public class KaryawanPanel extends JPanel {
         try {
             pesananController.updateStatus(idPesanan, (StatusPesanan) statusCombo.getSelectedItem());
             refreshOrders();
+            StatusPesanan status = (StatusPesanan) statusCombo.getSelectedItem();
+            if (status == StatusPesanan.SIAP_DIAMBIL || status == StatusPesanan.SELESAI) {
+                UiUtil.info(this, "Status diperbarui dan notifikasi aplikasi dibuat untuk pelanggan.");
+            }
         } catch (SQLException ex) {
             UiUtil.error(this, "Gagal update status pesanan.", ex);
+        }
+    }
+
+    private void buatTemplateWhatsApp() {
+        String idPesanan = UiUtil.selectedId(orderTable);
+        if (idPesanan == null) {
+            UiUtil.info(this, "Pilih pesanan untuk membuat template WhatsApp.");
+            return;
+        }
+        try {
+            String link = notifikasiController.buatLinkWhatsApp(idPesanan);
+            Toolkit.getDefaultToolkit()
+                    .getSystemClipboard()
+                    .setContents(new StringSelection(link), null);
+            UiUtil.info(this, "Template link WhatsApp sudah dibuat dan disalin ke clipboard:\n\n" + link);
+        } catch (SQLException ex) {
+            UiUtil.error(this, "Gagal membuat template WhatsApp.", ex);
         }
     }
 
