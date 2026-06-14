@@ -21,17 +21,28 @@ public class NotifikasiController {
         return notifikasiDAO.findByPelanggan(idPelanggan);
     }
 
+    public int tandaiSemuaDibaca(String idPelanggan) throws SQLException {
+        return notifikasiDAO.markAllReadByPelanggan(idPelanggan);
+    }
+
     public void kirimNotifikasiStatus(Pesanan pesanan) throws SQLException {
-        if (!perluNotifikasi(pesanan.getStatusPesanan())) {
+        Notifikasi notifikasi = buatNotifikasiStatus(pesanan);
+        if (notifikasi == null) {
             return;
         }
-        appNotifikasi.kirimNotifikasi(buatNotifikasiStatus(pesanan));
+        if (!notifikasiDAO.exists(notifikasi.getIdPesanan(), notifikasi.getPesan())) {
+            appNotifikasi.kirimNotifikasi(notifikasi);
+        }
     }
 
     public String buatLinkWhatsApp(String idPesanan) throws SQLException {
         Pesanan pesanan = pesananDAO.findById(idPesanan);
         if (pesanan == null) {
             throw new SQLException("Pesanan tidak ditemukan.");
+        }
+        if (!perluNotifikasi(pesanan.getStatusPesanan())) {
+            throw new IllegalArgumentException(
+                    "Template WhatsApp tersedia saat pesanan Siap Diambil atau Selesai.");
         }
         String nomorTelepon = notifikasiDAO.findNomorTeleponByPesanan(idPesanan);
         if (nomorTelepon == null || nomorTelepon.isBlank()) {
@@ -43,7 +54,10 @@ public class NotifikasiController {
         return whatsapp.getLinkWhatsApp();
     }
 
-    private Notifikasi buatNotifikasiStatus(Pesanan pesanan) {
+    public Notifikasi buatNotifikasiStatus(Pesanan pesanan) {
+        if (!perluNotifikasi(pesanan.getStatusPesanan())) {
+            return null;
+        }
         return new Notifikasi(
                 IdGenerator.generate("NTF"),
                 pesanan.getIdPesanan(),

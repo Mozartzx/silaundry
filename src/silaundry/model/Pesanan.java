@@ -37,7 +37,7 @@ public class Pesanan {
         this.totalBiaya = totalBiaya;
         this.catatan = catatan;
         if (totalBiaya <= 0 && beratKg > 0 && hargaPerKg > 0) {
-            kalkulasiTotalBiaya();
+            this.totalBiaya = Math.round(beratKg * hargaPerKg);
         }
     }
 
@@ -48,10 +48,6 @@ public class Pesanan {
     public double kalkulasiTotalBiaya() {
         totalBiaya = Math.round(beratKg * hargaPerKg);
         return totalBiaya;
-    }
-
-    public void kirimNotifikasiSelesai() {
-        System.out.println("Pesanan " + idPesanan + " selesai dan notifikasi dikirim.");
     }
 
     public String getIdPesanan() {

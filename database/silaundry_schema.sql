@@ -77,6 +77,7 @@ CREATE TABLE pesanan (
     tanggal_masuk DATE NOT NULL,
     estimasi_selesai DATE NOT NULL,
     status_pesanan ENUM('BARU','DITERIMA','DIPROSES','DICUCI','DIKERINGKAN','DISETRIKA','SIAP_DIAMBIL','SELESAI','DIBATALKAN') NOT NULL DEFAULT 'BARU',
+    status_diperbarui_pada DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     paket_laundry ENUM('STANDARD_2_HARI','EXPRESS_1_HARI') NOT NULL,
     berat_kg DECIMAL(6,2) NOT NULL,
     harga_per_kg DECIMAL(12,2) NOT NULL,
@@ -142,10 +143,14 @@ CREATE TABLE detail_pembayaran (
     id_detail VARCHAR(20) PRIMARY KEY,
     id_pembayaran VARCHAR(20) NOT NULL,
     waktu_bayar DATETIME NOT NULL,
+    metode VARCHAR(30) NOT NULL,
+    jumlah DECIMAL(12,2) NOT NULL,
     keterangan VARCHAR(150),
     FOREIGN KEY (id_pembayaran) REFERENCES pembayaran(id_pembayaran)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    INDEX idx_detail_pembayaran (id_pembayaran)
+    INDEX idx_detail_pembayaran (id_pembayaran),
+    INDEX idx_detail_waktu_bayar (waktu_bayar),
+    CONSTRAINT chk_detail_jumlah CHECK (jumlah > 0)
 );
 
 CREATE TABLE notifikasi (
@@ -165,9 +170,9 @@ CREATE TRIGGER trg_pengguna_owner_insert
 BEFORE INSERT ON pengguna
 FOR EACH ROW
 BEGIN
-    IF NEW.role = 'PEMILIK' AND NEW.username <> 'Mozart' THEN
+    IF NEW.role = 'PEMILIK' AND NEW.username <> 'Master' THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Akun pemilik hanya boleh menggunakan username Mozart.';
+            SET MESSAGE_TEXT = 'Akun pemilik hanya boleh menggunakan username Master.';
     END IF;
 END$$
 
@@ -175,9 +180,9 @@ CREATE TRIGGER trg_pengguna_owner_update
 BEFORE UPDATE ON pengguna
 FOR EACH ROW
 BEGIN
-    IF NEW.role = 'PEMILIK' AND NEW.username <> 'Mozart' THEN
+    IF NEW.role = 'PEMILIK' AND NEW.username <> 'Master' THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Akun pemilik hanya boleh menggunakan username Mozart.';
+            SET MESSAGE_TEXT = 'Akun pemilik hanya boleh menggunakan username Master.';
     END IF;
 END$$
 
@@ -214,20 +219,10 @@ END$$
 DELIMITER ;
 
 INSERT INTO pengguna (id_pengguna, username, nama_lengkap, nomor_telepon, kata_sandi, role) VALUES
-('USR001', 'Mozart', 'Fanan Agfian Mozart', '081200000001', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'PEMILIK'),
-('USR002', 'karyawan', 'Ammar Farras Hanindhiya Bastian', '081200000002', '4b544df5bd793515057a6ae1e49a44c57f038333dcd9a1e6af0d6cca04e1fac3', 'KARYAWAN'),
-('USR003', 'pelanggan', 'Grace Jessica', '081200000003', 'c72b07da279dcd31547fbce04ba65815266ae8689b0fe069ad9080502c57b264', 'PELANGGAN'),
-('USR004', 'naufal', 'Naufal Indra Washikita', '081200000004', 'c72b07da279dcd31547fbce04ba65815266ae8689b0fe069ad9080502c57b264', 'PELANGGAN');
+('USR001', 'Master', 'Master Admin', '081234567890', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'PEMILIK');
 
 INSERT INTO pemilik (id_pemilik, id_pengguna) VALUES
 ('OWN001', 'USR001');
-
-INSERT INTO karyawan (id_karyawan, id_pengguna, shift_kerja) VALUES
-('KRY001', 'USR002', 'Pagi');
-
-INSERT INTO pelanggan (id_pelanggan, id_pengguna, alamat) VALUES
-('PLG001', 'USR003', 'Jl. Telekomunikasi No. 1, Bandung'),
-('PLG002', 'USR004', 'Jl. Sukapura No. 12, Bandung');
 
 INSERT INTO mesin_cuci (id_mesin, nama_mesin, kapasitas, status) VALUES
 ('MSN001', 'Mesin A', 8.00, 'TERSEDIA'),
@@ -237,25 +232,3 @@ INSERT INTO mesin_cuci (id_mesin, nama_mesin, kapasitas, status) VALUES
 INSERT INTO tarif_laundry (id_tarif, paket_laundry, nama_paket, estimasi_hari, harga_per_kg, aktif) VALUES
 ('TRF001', 'STANDARD_2_HARI', 'Standard 2 Hari', 2, 7000, TRUE),
 ('TRF002', 'EXPRESS_1_HARI', 'Express 1 Hari', 1, 8000, TRUE);
-
-INSERT INTO pesanan (id_pesanan, id_pelanggan, id_karyawan, tanggal_masuk, estimasi_selesai, status_pesanan,
-    paket_laundry, berat_kg, harga_per_kg, total_biaya, catatan) VALUES
-('ORD001', 'PLG001', 'KRY001', CURRENT_DATE(), DATE_ADD(CURRENT_DATE(), INTERVAL 2 DAY), 'DIPROSES',
-    'STANDARD_2_HARI', 6.50, 7000, 45500, 'Cuci lipat reguler'),
-('ORD002', 'PLG002', 'KRY001', CURRENT_DATE(), DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY), 'SIAP_DIAMBIL',
-    'EXPRESS_1_HARI', 3.75, 8000, 30000, 'Prioritas warna gelap');
-
-INSERT INTO item_pakaian (id_item, id_pesanan, jenis_pakaian, kategori_warna, kondisi_awal, deskripsi_detail, label_smart_group, kode_qr) VALUES
-('ITM001', 'ORD001', 'Kemeja', 'PUTIH', 'Normal', 'Kemeja putih lengan panjang, satu kancing cadangan di manset kiri.', 'Grup Putih', 'QR-ITM001'),
-('ITM002', 'ORD001', 'Celana Jeans', 'GELAP', 'Sedikit luntur', 'Jeans biru tua merek Denim Co, ada lipatan aus di lutut kanan.', 'Grup Gelap', 'QR-ITM002'),
-('ITM003', 'ORD002', 'Kaos Merah', 'MUDAH_LUNTUR', 'Warna kuat', 'Kaos merah polos ukuran L, sablon kecil di dada kiri.', 'Grup Mudah Luntur', 'QR-ITM003');
-
-INSERT INTO pembayaran (id_pembayaran, id_pesanan, metode, jumlah, status) VALUES
-('PAY001', 'ORD001', 'Tunai', 45000, 'BELUM_BAYAR'),
-('PAY002', 'ORD002', 'QRIS', 30000, 'LUNAS');
-
-INSERT INTO detail_pembayaran (id_detail, id_pembayaran, waktu_bayar, keterangan) VALUES
-('DPY001', 'PAY002', NOW(), 'Pembayaran lunas via QRIS');
-
-INSERT INTO notifikasi (id_notifikasi, id_pesanan, pesan, tanggal_kirim) VALUES
-('NTF001', 'ORD002', 'Pesanan ORD002 sudah siap diambil.', NOW());

@@ -10,14 +10,18 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import silaundry.controller.ItemController;
+import silaundry.model.Pelanggan;
+import silaundry.model.Pengguna;
 import silaundry.service.TrackingResult;
 
 public class TrackingPanel extends JPanel {
     private final ItemController itemController = new ItemController();
+    private final Pengguna pengguna;
     private final JTextField trackingField = new JTextField(24);
     private final JTextArea resultArea = new JTextArea(12, 60);
 
-    public TrackingPanel() {
+    public TrackingPanel(Pengguna pengguna) {
+        this.pengguna = pengguna;
         setLayout(new BorderLayout(8, 8));
         setBackground(AppTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -28,7 +32,9 @@ public class TrackingPanel extends JPanel {
         AppTheme.styleTextField(trackingField);
         JLabel title = AppTheme.sectionTitle("Item Tracking");
         form.add(title);
-        form.add(AppTheme.muted("Masukkan ID item atau kode QR teks"));
+        form.add(AppTheme.muted(pengguna instanceof Pelanggan
+                ? "Masukkan ID item atau QR dari pesanan Anda"
+                : "Masukkan ID item atau kode QR teks"));
         form.add(trackingField);
         JButton trackButton = AppTheme.primaryButton("Lacak");
         trackButton.addActionListener(event -> track());
@@ -48,11 +54,10 @@ public class TrackingPanel extends JPanel {
             UiUtil.info(this, "Isi ID item atau kode QR teks.");
             return;
         }
-        try {
-            TrackingResult result = itemController.lacakItem(key);
-            resultArea.setText(result.toSummary());
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal melacak item.", ex);
-        }
+        UiUtil.runAsync(
+                this,
+                () -> itemController.lacakItem(key, pengguna),
+                result -> resultArea.setText(result.toSummary()),
+                "Gagal melacak item.");
     }
 }

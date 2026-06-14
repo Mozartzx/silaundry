@@ -55,14 +55,15 @@ public class MainFrame extends JFrame {
         if (pengguna instanceof Pemilik) {
             addRoute("Dashboard Pemilik", "Laporan dan karyawan", new PemilikPanel());
         }
-        addRoute("Item Tracking", "Cari item dengan ID/QR", new TrackingPanel());
+        addRoute("Item Tracking", pengguna instanceof Pelanggan ? "Lacak item laundry Anda" : "Cari item dengan ID/QR",
+                new TrackingPanel(pengguna));
         selectFirstRoute();
         return shell;
     }
 
     private JPanel buildSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(245, 0));
+        sidebar.setPreferredSize(new Dimension(220, 0));
         sidebar.setBackground(AppTheme.PRIMARY_DARK);
         sidebar.setBorder(new EmptyBorder(20, 16, 16, 16));
 
@@ -91,6 +92,9 @@ public class MainFrame extends JFrame {
 
         JButton logoutButton = sidebarButton("Logout", "Keluar dari aplikasi");
         logoutButton.addActionListener(event -> {
+            if (!UiUtil.confirm(this, "Keluar dari akun " + pengguna.getNamaLengkap() + "?")) {
+                return;
+            }
             pengguna.logout();
             dispose();
             new LoginFrame().setVisible(true);

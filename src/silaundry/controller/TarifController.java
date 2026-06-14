@@ -22,8 +22,8 @@ public class TarifController {
     }
 
     public void updateHarga(PaketLaundry paketLaundry, double hargaPerKg) throws SQLException {
-        if (hargaPerKg <= 0) {
-            throw new IllegalArgumentException("Harga per kilo harus lebih dari 0.");
+        if (hargaPerKg < 1000 || hargaPerKg > 1_000_000) {
+            throw new IllegalArgumentException("Harga per kilo harus antara Rp1.000 dan Rp1.000.000.");
         }
         tarifLaundryDAO.updateHarga(paketLaundry, hargaPerKg);
     }

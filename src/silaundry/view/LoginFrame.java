@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -28,9 +29,9 @@ public class LoginFrame extends JFrame {
     private final AuthController authController = new AuthController();
     private final PenggunaController penggunaController = new PenggunaController();
     private final JComboBox<Role> roleCombo = new JComboBox<>(Role.values());
-    private final JTextField usernameField = new JTextField("Mozart", 24);
-    private final JPasswordField passwordField = new JPasswordField("123", 24);
-    private final JLabel statusLabel = new JLabel("Pemilik: Mozart / 123");
+    private final JTextField usernameField = new JTextField("Master", 24);
+    private final JPasswordField passwordField = new JPasswordField(24);
+    private final JLabel statusLabel = new JLabel("Akun awal pemilik: Master / 123");
 
     public LoginFrame() {
         setTitle("SILAUNDRY - Login");
@@ -191,18 +192,32 @@ public class LoginFrame extends JFrame {
         gbc.insets = new Insets(4, 0, 5, 0);
         panel.add(new JLabel("Password"), gbc);
         gbc.gridy = 7;
-        gbc.insets = new Insets(0, 0, 16, 0);
+        gbc.insets = new Insets(0, 0, 6, 0);
         panel.add(passwordField, gbc);
+
+        JCheckBox showPassword = new JCheckBox("Tampilkan password");
+        showPassword.setBackground(AppTheme.SURFACE);
+        showPassword.setForeground(AppTheme.MUTED);
+        char defaultEchoChar = passwordField.getEchoChar();
+        showPassword.addActionListener(event -> passwordField.setEchoChar(
+                showPassword.isSelected() ? '\0' : defaultEchoChar));
+        gbc.gridy = 8;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        panel.add(showPassword, gbc);
 
         JButton loginButton = AppTheme.primaryButton("Masuk");
         loginButton.addActionListener(event -> login());
         JButton testButton = AppTheme.secondaryButton("Test DB");
-        testButton.addActionListener(event -> statusLabel.setText(authController.testConnection()));
+        testButton.addActionListener(event -> UiUtil.runAsync(
+                this,
+                authController::testConnection,
+                statusLabel::setText,
+                "Tidak dapat menguji koneksi database."));
 
-        gbc.gridy = 8;
+        gbc.gridy = 9;
         gbc.insets = new Insets(0, 0, 8, 0);
         panel.add(loginButton, gbc);
-        gbc.gridy = 9;
+        gbc.gridy = 10;
         panel.add(testButton, gbc);
 
         roleCombo.addActionListener(event -> applyRolePreset());
@@ -226,16 +241,16 @@ public class LoginFrame extends JFrame {
     private void applyRolePreset() {
         Role role = (Role) roleCombo.getSelectedItem();
         if (role == Role.PEMILIK) {
-            usernameField.setText("Mozart");
-            passwordField.setText("123");
-            statusLabel.setText("Pemilik hanya satu akun: Mozart / 123");
+            usernameField.setText("Master");
+            passwordField.setText("");
+            statusLabel.setText("Akun awal pemilik: Master / 123");
         } else if (role == Role.KARYAWAN) {
-            usernameField.setText("karyawan");
-            passwordField.setText("karyawan123");
+            usernameField.setText("");
+            passwordField.setText("");
             statusLabel.setText("Karyawan dibuat oleh pemilik dari dashboard.");
         } else {
-            usernameField.setText("pelanggan");
-            passwordField.setText("pelanggan123");
+            usernameField.setText("");
+            passwordField.setText("");
             statusLabel.setText("Pelanggan bisa daftar sendiri lewat tombol Daftar Pelanggan.");
         }
     }
@@ -248,17 +263,14 @@ public class LoginFrame extends JFrame {
             UiUtil.info(this, "Username dan password wajib diisi.");
             return;
         }
-        try {
-            Pengguna pengguna = authController.login(username, password, role);
+        UiUtil.runAsync(this, () -> authController.login(username, password, role), pengguna -> {
             if (pengguna == null) {
                 UiUtil.info(this, "Login gagal. Pastikan username, password, dan role sudah sesuai.");
                 return;
             }
             dispose();
             new MainFrame(pengguna).setVisible(true);
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Tidak bisa login karena koneksi database bermasalah.", ex);
-        }
+        }, "Tidak bisa login karena koneksi database bermasalah.");
     }
 
     private void showRegisterDialog() {
@@ -266,11 +278,13 @@ public class LoginFrame extends JFrame {
         JTextField nama = new JTextField(18);
         JTextField telepon = new JTextField(18);
         JPasswordField password = new JPasswordField(18);
+        JPasswordField konfirmasiPassword = new JPasswordField(18);
         JTextField alamat = new JTextField(18);
         AppTheme.styleTextField(username);
         AppTheme.styleTextField(nama);
         AppTheme.styleTextField(telepon);
         AppTheme.styleTextField(password);
+        AppTheme.styleTextField(konfirmasiPassword);
         AppTheme.styleTextField(alamat);
 
         JPanel form = new JPanel(new GridBagLayout());
@@ -285,7 +299,8 @@ public class LoginFrame extends JFrame {
         addRegisterRow(form, gbc, 2, "Nama lengkap", nama);
         addRegisterRow(form, gbc, 4, "Nomor telepon", telepon);
         addRegisterRow(form, gbc, 6, "Password", password);
-        addRegisterRow(form, gbc, 8, "Alamat", alamat);
+        addRegisterRow(form, gbc, 8, "Konfirmasi password", konfirmasiPassword);
+        addRegisterRow(form, gbc, 10, "Alamat", alamat);
 
         int option = JOptionPane.showConfirmDialog(
                 this,
@@ -298,27 +313,31 @@ public class LoginFrame extends JFrame {
         }
 
         String rawPassword = new String(password.getPassword());
+        String rawKonfirmasi = new String(konfirmasiPassword.getPassword());
         if (username.getText().trim().isEmpty() || nama.getText().trim().isEmpty()
                 || telepon.getText().trim().isEmpty() || rawPassword.isEmpty()
                 || alamat.getText().trim().isEmpty()) {
             UiUtil.info(this, "Semua field register pelanggan wajib diisi.");
             return;
         }
+        if (!rawPassword.equals(rawKonfirmasi)) {
+            UiUtil.info(this, "Konfirmasi password tidak sama.");
+            return;
+        }
 
-        try {
-            penggunaController.tambahPelanggan(
-                    username.getText().trim(),
-                    nama.getText().trim(),
-                    telepon.getText().trim(),
-                    rawPassword,
-                    alamat.getText().trim());
+        String usernameBaru = username.getText().trim();
+        String namaBaru = nama.getText().trim();
+        String teleponBaru = telepon.getText().trim();
+        String alamatBaru = alamat.getText().trim();
+        UiUtil.runAsync(this, () -> {
+            penggunaController.tambahPelanggan(usernameBaru, namaBaru, teleponBaru, rawPassword, alamatBaru);
+            return null;
+        }, ignored -> {
             roleCombo.setSelectedItem(Role.PELANGGAN);
-            usernameField.setText(username.getText().trim());
+            usernameField.setText(usernameBaru);
             passwordField.setText(rawPassword);
             statusLabel.setText("Akun pelanggan berhasil dibuat. Silakan login.");
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal membuat akun pelanggan. Username mungkin sudah digunakan.", ex);
-        }
+        }, "Gagal membuat akun pelanggan. Username mungkin sudah digunakan.");
     }
 
     private void addRegisterRow(JPanel form, GridBagConstraints gbc, int row, String label, Component field) {

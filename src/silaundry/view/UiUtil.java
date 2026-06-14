@@ -2,14 +2,23 @@ package silaundry.view;
 
 import java.awt.Component;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.text.NumberFormat;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import javax.swing.JOptionPane;
+import javax.swing.JTextField;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableRowSorter;
+import javax.swing.RowFilter;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 
 public final class UiUtil {
     private static final NumberFormat RUPIAH = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
@@ -47,6 +56,9 @@ public final class UiUtil {
             TableColumn column = table.getColumnModel().getColumn(i);
             String name = column.getHeaderValue().toString();
             column.setPreferredWidth(preferredColumnWidth(name));
+            if ("Status".equals(name)) {
+                column.setCellRenderer(new StatusRenderer());
+            }
         }
     }
 
@@ -59,8 +71,80 @@ public final class UiUtil {
     }
 
     public static void error(Component parent, String message, Exception ex) {
-        String detail = ex == null ? "" : "\n\nDetail: " + ex.getMessage();
-        JOptionPane.showMessageDialog(parent, message + detail, "Terjadi Kesalahan", JOptionPane.ERROR_MESSAGE);
+        if (ex != null) {
+            ex.printStackTrace();
+        }
+        JOptionPane.showMessageDialog(parent, message + "\nSilakan periksa koneksi atau data yang dimasukkan.",
+                "Terjadi Kesalahan", JOptionPane.ERROR_MESSAGE);
+    }
+
+    public static boolean confirm(Component parent, String message) {
+        return JOptionPane.showConfirmDialog(parent, message, "Konfirmasi",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
+    }
+
+    public static <T> void runAsync(Component parent, BackgroundTask<T> task,
+            Consumer<T> onSuccess, String errorMessage) {
+        Component cursorTarget = SwingUtilities.getWindowAncestor(parent);
+        if (cursorTarget == null) {
+            cursorTarget = parent;
+        }
+        Component finalCursorTarget = cursorTarget;
+        finalCursorTarget.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        new SwingWorker<T, Void>() {
+            @Override
+            protected T doInBackground() throws Exception {
+                return task.run();
+            }
+
+            @Override
+            protected void done() {
+                finalCursorTarget.setCursor(Cursor.getDefaultCursor());
+                try {
+                    onSuccess.accept(get());
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    error(parent, errorMessage, ex);
+                } catch (ExecutionException ex) {
+                    Throwable cause = ex.getCause();
+                    if (cause instanceof IllegalArgumentException illegalArgument) {
+                        info(parent, illegalArgument.getMessage());
+                    } else {
+                        error(parent, errorMessage,
+                                cause instanceof Exception exception ? exception : new RuntimeException(cause));
+                    }
+                } catch (RuntimeException ex) {
+                    error(parent, errorMessage, ex);
+                }
+            }
+        }.execute();
+    }
+
+    public static void installSearch(JTable table, JTextField searchField) {
+        TableRowSorter<javax.swing.table.TableModel> sorter = new TableRowSorter<>(table.getModel());
+        table.setRowSorter(sorter);
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private void update() {
+                String keyword = searchField.getText().trim();
+                sorter.setRowFilter(keyword.isEmpty() ? null
+                        : RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(keyword)));
+            }
+
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent event) {
+                update();
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent event) {
+                update();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent event) {
+                update();
+            }
+        });
     }
 
     public static String selectedId(JTable table) {
@@ -86,5 +170,28 @@ public final class UiUtil {
             case "Deskripsi Detail", "Catatan", "Pesan" -> 300;
             default -> 140;
         };
+    }
+
+    private static final class StatusRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean selected,
+                boolean focused, int row, int column) {
+            Component component = super.getTableCellRendererComponent(table, value, selected, focused, row, column);
+            if (!selected) {
+                String status = value == null ? "" : value.toString().toLowerCase(Locale.ROOT);
+                component.setBackground(status.contains("siap") || status.contains("lunas")
+                        ? new Color(220, 245, 228)
+                        : status.contains("batal") ? new Color(252, 226, 226)
+                        : status.contains("selesai") ? new Color(232, 237, 243)
+                        : Color.WHITE);
+                component.setForeground(AppTheme.TEXT);
+            }
+            return component;
+        }
+    }
+
+    @FunctionalInterface
+    public interface BackgroundTask<T> {
+        T run() throws Exception;
     }
 }

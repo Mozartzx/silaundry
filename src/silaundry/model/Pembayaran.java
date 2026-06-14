@@ -17,16 +17,14 @@ public class Pembayaran {
         this.status = status;
     }
 
-    public void prosesPembayaran() {
-        this.status = jumlah > 0 ? StatusPembayaran.LUNAS : StatusPembayaran.BELUM_BAYAR;
-    }
-
-    public void prosesPembayaran(StatusPembayaran statusBaru) {
-        this.status = statusBaru;
-    }
-
-    public void konfirmasiPembayaran() {
-        this.status = StatusPembayaran.LUNAS;
+    public void prosesPembayaran(double totalTagihan) {
+        if (jumlah <= 0) {
+            status = StatusPembayaran.BELUM_BAYAR;
+        } else if (jumlah < totalTagihan) {
+            status = StatusPembayaran.SEBAGIAN;
+        } else {
+            status = StatusPembayaran.LUNAS;
+        }
     }
 
     public String getIdPembayaran() {

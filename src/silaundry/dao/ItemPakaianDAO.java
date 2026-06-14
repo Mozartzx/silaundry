@@ -56,6 +56,38 @@ public class ItemPakaianDAO {
         }
     }
 
+    public ItemPakaian findByTrackingKeyAndPelanggan(String trackingKey, String idPelanggan) throws SQLException {
+        String sql = """
+                SELECT ip.*
+                FROM item_pakaian ip
+                JOIN pesanan ps ON ps.id_pesanan = ip.id_pesanan
+                WHERE (ip.id_item = ? OR ip.kode_qr = ?)
+                  AND ps.id_pelanggan = ?
+                LIMIT 1
+                """;
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, trackingKey);
+            statement.setString(2, trackingKey);
+            statement.setString(3, idPelanggan);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? mapItem(resultSet) : null;
+            }
+        }
+    }
+
+    public int countByPesanan(String idPesanan) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM item_pakaian WHERE id_pesanan = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, idPesanan);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getInt(1);
+            }
+        }
+    }
+
     public void create(ItemPakaian item) throws SQLException {
         String sql = """
                 INSERT INTO item_pakaian (id_item, id_pesanan, jenis_pakaian, kategori_warna,
@@ -83,6 +115,26 @@ public class ItemPakaianDAO {
             statement.setString(1, labelSmartGroup);
             statement.setString(2, idItem);
             statement.executeUpdate();
+        }
+    }
+
+    public void updateSmartGroups(List<ItemPakaian> items) throws SQLException {
+        String sql = "UPDATE item_pakaian SET label_smart_group = ? WHERE id_item = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            connection.setAutoCommit(false);
+            try {
+                for (ItemPakaian item : items) {
+                    statement.setString(1, item.getLabelSmartGroup());
+                    statement.setString(2, item.getIdItem());
+                    statement.addBatch();
+                }
+                statement.executeBatch();
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            }
         }
     }
 

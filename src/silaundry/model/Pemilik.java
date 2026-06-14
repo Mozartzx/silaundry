@@ -3,13 +3,11 @@ package silaundry.model;
 import silaundry.model.enums.Role;
 
 public class Pemilik extends Pengguna {
-    private String id;
     private String idPemilik;
 
     public Pemilik(String idPengguna, String username, String namaLengkap, String nomorTelepon,
             String kataSandi, String idPemilik) {
         super(idPengguna, username, namaLengkap, nomorTelepon, kataSandi, Role.PEMILIK);
-        this.id = idPemilik;
         this.idPemilik = idPemilik;
     }
 
@@ -26,11 +24,10 @@ public class Pemilik extends Pengguna {
     }
 
     public String getId() {
-        return id;
+        return idPemilik;
     }
 
     public void setId(String id) {
-        this.id = id;
         this.idPemilik = id;
     }
 
@@ -40,6 +37,5 @@ public class Pemilik extends Pengguna {
 
     public void setIdPemilik(String idPemilik) {
         this.idPemilik = idPemilik;
-        this.id = idPemilik;
     }
 }

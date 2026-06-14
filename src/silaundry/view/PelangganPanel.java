@@ -57,6 +57,9 @@ public class PelangganPanel extends JPanel {
         actions.setBackground(AppTheme.SURFACE);
         JButton refreshButton = AppTheme.primaryButton("Refresh");
         refreshButton.addActionListener(event -> refresh());
+        JButton readButton = AppTheme.secondaryButton("Tandai Notifikasi Dibaca");
+        readButton.addActionListener(event -> markNotificationsRead());
+        actions.add(readButton);
         actions.add(refreshButton);
 
         header.add(title, BorderLayout.CENTER);
@@ -88,14 +91,15 @@ public class PelangganPanel extends JPanel {
     }
 
     private void refresh() {
-        activeModel.setRowCount(0);
-        historyModel.setRowCount(0);
-        notificationModel.setRowCount(0);
-        try {
-            List<Pesanan> rows = pesananController.getPesananPelanggan(pelanggan.getIdPelanggan());
+        UiUtil.runAsync(this, () -> new CustomerData(
+                pesananController.getPesananPelanggan(pelanggan.getIdPelanggan()),
+                notifikasiController.getNotifikasiPelanggan(pelanggan.getIdPelanggan())), data -> {
+            activeModel.setRowCount(0);
+            historyModel.setRowCount(0);
+            notificationModel.setRowCount(0);
             int activeCount = 0;
             int historyCount = 0;
-            for (Pesanan pesanan : rows) {
+            for (Pesanan pesanan : data.pesanan()) {
                 Object[] row = toRow(pesanan);
                 if (isHistory(pesanan)) {
                     historyModel.addRow(row);
@@ -105,12 +109,27 @@ public class PelangganPanel extends JPanel {
                     activeCount++;
                 }
             }
-            int notificationCount = refreshNotifications();
+            for (Notifikasi notifikasi : data.notifikasi()) {
+                notificationModel.addRow(new Object[] {
+                        notifikasi.getTanggalKirim(),
+                        notifikasi.getIdPesanan(),
+                        notifikasi.getPesan(),
+                        notifikasi.isSudahDibaca() ? "Sudah dibaca" : "Belum dibaca"
+                });
+            }
+            int notificationCount = data.notifikasi().size();
             summaryLabel.setText(activeCount + " pesanan berjalan, " + historyCount
                     + " riwayat pesanan, " + notificationCount + " notifikasi.");
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal memuat status laundry pelanggan.", ex);
-        }
+            if (activeCount == 0) {
+                activeModel.addRow(new Object[] { "-", "-", "-", "-", "-", "Belum ada pesanan aktif", "-", "-" });
+            }
+            if (historyCount == 0) {
+                historyModel.addRow(new Object[] { "-", "-", "-", "-", "-", "Belum ada riwayat", "-", "-" });
+            }
+            if (notificationCount == 0) {
+                notificationModel.addRow(new Object[] { "-", "-", "Belum ada notifikasi", "-" });
+            }
+        }, "Gagal memuat status laundry pelanggan.");
     }
 
     private Object[] toRow(Pesanan pesanan) {
@@ -131,16 +150,14 @@ public class PelangganPanel extends JPanel {
                 || pesanan.getStatusPesanan() == StatusPesanan.DIBATALKAN;
     }
 
-    private int refreshNotifications() throws SQLException {
-        List<Notifikasi> notifikasiList = notifikasiController.getNotifikasiPelanggan(pelanggan.getIdPelanggan());
-        for (Notifikasi notifikasi : notifikasiList) {
-            notificationModel.addRow(new Object[] {
-                    notifikasi.getTanggalKirim(),
-                    notifikasi.getIdPesanan(),
-                    notifikasi.getPesan(),
-                    notifikasi.isSudahDibaca() ? "Sudah dibaca" : "Belum dibaca"
-            });
-        }
-        return notifikasiList.size();
+    private void markNotificationsRead() {
+        UiUtil.runAsync(this,
+                () -> notifikasiController.tandaiSemuaDibaca(pelanggan.getIdPelanggan()), changed -> {
+            refresh();
+            UiUtil.info(this, changed == 0 ? "Tidak ada notifikasi baru." : changed + " notifikasi ditandai dibaca.");
+        }, "Gagal memperbarui notifikasi.");
+    }
+
+    private record CustomerData(List<Pesanan> pesanan, List<Notifikasi> notifikasi) {
     }
 }

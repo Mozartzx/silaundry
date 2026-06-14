@@ -9,11 +9,13 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import silaundry.model.Pesanan;
+import silaundry.model.Notifikasi;
 import silaundry.model.enums.PaketLaundry;
 import silaundry.model.enums.StatusPesanan;
 import silaundry.util.DatabaseConnection;
 
 public class PesananDAO {
+    private final NotifikasiDAO notifikasiDAO = new NotifikasiDAO();
     public List<Pesanan> findAll() throws SQLException {
         String sql = baseQuery() + " ORDER BY ps.tanggal_masuk DESC, ps.id_pesanan DESC";
         List<Pesanan> pesanan = new ArrayList<>();
@@ -77,7 +79,7 @@ public class PesananDAO {
     }
 
     public void updateStatus(String idPesanan, StatusPesanan statusPesanan) throws SQLException {
-        String sql = "UPDATE pesanan SET status_pesanan = ? WHERE id_pesanan = ?";
+        String sql = "UPDATE pesanan SET status_pesanan = ?, status_diperbarui_pada = NOW() WHERE id_pesanan = ?";
         try (Connection connection = DatabaseConnection.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, statusPesanan.name());
@@ -86,12 +88,31 @@ public class PesananDAO {
         }
     }
 
-    public void delete(String idPesanan) throws SQLException {
-        String sql = "DELETE FROM pesanan WHERE id_pesanan = ?";
-        try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, idPesanan);
-            statement.executeUpdate();
+    public void updateStatusDanNotifikasi(String idPesanan, StatusPesanan statusLama,
+            StatusPesanan statusBaru, Notifikasi notifikasi) throws SQLException {
+        String sql = """
+                UPDATE pesanan
+                SET status_pesanan = ?, status_diperbarui_pada = NOW()
+                WHERE id_pesanan = ? AND status_pesanan = ?
+                """;
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, statusBaru.name());
+                statement.setString(2, idPesanan);
+                statement.setString(3, statusLama.name());
+                if (statement.executeUpdate() != 1) {
+                    throw new SQLException("Status pesanan berubah oleh proses lain. Silakan refresh data.");
+                }
+                if (notifikasi != null
+                        && !notifikasiDAO.exists(connection, notifikasi.getIdPesanan(), notifikasi.getPesan())) {
+                    notifikasiDAO.create(connection, notifikasi);
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            }
         }
     }
 

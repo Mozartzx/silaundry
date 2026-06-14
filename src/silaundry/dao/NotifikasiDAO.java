@@ -12,12 +12,17 @@ import silaundry.util.DatabaseConnection;
 
 public class NotifikasiDAO {
     public void create(Notifikasi notifikasi) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            create(connection, notifikasi);
+        }
+    }
+
+    public void create(Connection connection, Notifikasi notifikasi) throws SQLException {
         String sql = """
                 INSERT INTO notifikasi (id_notifikasi, id_pesanan, pesan, tanggal_kirim, sudah_dibaca)
                 VALUES (?, ?, ?, ?, ?)
                 """;
-        try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, notifikasi.getIdNotifikasi());
             statement.setString(2, notifikasi.getIdPesanan());
             statement.setString(3, notifikasi.getPesan());
@@ -62,6 +67,37 @@ public class NotifikasiDAO {
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? resultSet.getString("nomor_telepon") : null;
             }
+        }
+    }
+
+    public boolean exists(String idPesanan, String pesan) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            return exists(connection, idPesanan, pesan);
+        }
+    }
+
+    public boolean exists(Connection connection, String idPesanan, String pesan) throws SQLException {
+        String sql = "SELECT 1 FROM notifikasi WHERE id_pesanan = ? AND pesan = ? LIMIT 1";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, idPesanan);
+            statement.setString(2, pesan);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        }
+    }
+
+    public int markAllReadByPelanggan(String idPelanggan) throws SQLException {
+        String sql = """
+                UPDATE notifikasi n
+                JOIN pesanan ps ON ps.id_pesanan = n.id_pesanan
+                SET n.sudah_dibaca = TRUE
+                WHERE ps.id_pelanggan = ? AND n.sudah_dibaca = FALSE
+                """;
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, idPelanggan);
+            return statement.executeUpdate();
         }
     }
 

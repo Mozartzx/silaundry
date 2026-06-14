@@ -14,7 +14,12 @@ public class DashboardDAO {
         String sql = """
                 SELECT
                     (SELECT COUNT(*) FROM pesanan WHERE status_pesanan NOT IN ('SELESAI','DIBATALKAN')) AS aktif,
-                    (SELECT COALESCE(SUM(total_biaya), 0) FROM pesanan WHERE status_pesanan <> 'DIBATALKAN') AS pendapatan,
+                    (SELECT COALESCE(SUM(total_biaya), 0) FROM pesanan
+                        WHERE status_pesanan NOT IN ('SELESAI','DIBATALKAN')) AS nilai_aktif,
+                    (SELECT COALESCE(SUM(d.jumlah), 0)
+                        FROM detail_pembayaran d
+                        WHERE YEAR(d.waktu_bayar) = YEAR(CURRENT_DATE())
+                          AND MONTH(d.waktu_bayar) = MONTH(CURRENT_DATE())) AS pendapatan_diterima,
                     (SELECT COUNT(*) FROM item_pakaian) AS item_count,
                     (SELECT COUNT(*) FROM pelanggan) AS pelanggan_count
                 """;
@@ -25,7 +30,8 @@ public class DashboardDAO {
             return new DataDasbor(
                     "DSB-" + YearMonth.now(),
                     resultSet.getInt("aktif"),
-                    resultSet.getDouble("pendapatan"),
+                    resultSet.getDouble("nilai_aktif"),
+                    resultSet.getDouble("pendapatan_diterima"),
                     resultSet.getInt("item_count"),
                     resultSet.getInt("pelanggan_count"));
         }
@@ -33,12 +39,16 @@ public class DashboardDAO {
 
     public LaporanKeuangan getLaporanBulanIni() throws SQLException {
         String sql = """
-                SELECT COALESCE(SUM(p.jumlah), 0) AS total_pendapatan,
-                       COUNT(CASE WHEN ps.status_pesanan = 'SELESAI' THEN 1 END) AS selesai
-                FROM pesanan ps
-                LEFT JOIN pembayaran p ON p.id_pesanan = ps.id_pesanan AND p.status = 'LUNAS'
-                WHERE YEAR(ps.tanggal_masuk) = YEAR(CURRENT_DATE())
-                  AND MONTH(ps.tanggal_masuk) = MONTH(CURRENT_DATE())
+                SELECT
+                    (SELECT COALESCE(SUM(d.jumlah), 0)
+                     FROM detail_pembayaran d
+                     WHERE YEAR(d.waktu_bayar) = YEAR(CURRENT_DATE())
+                       AND MONTH(d.waktu_bayar) = MONTH(CURRENT_DATE())) AS total_pendapatan,
+                    (SELECT COUNT(*)
+                     FROM pesanan ps
+                     WHERE ps.status_pesanan = 'SELESAI'
+                       AND YEAR(ps.status_diperbarui_pada) = YEAR(CURRENT_DATE())
+                       AND MONTH(ps.status_diperbarui_pada) = MONTH(CURRENT_DATE())) AS selesai
                 """;
         try (Connection connection = DatabaseConnection.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql);

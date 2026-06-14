@@ -1,6 +1,7 @@
 package silaundry.util;
 
 import java.io.FileInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
@@ -28,15 +29,15 @@ public final class DatabaseConnection {
     }
 
     public static String testConnection() {
-        try (Connection ignored = getConnection()) {
-            return "Koneksi database berhasil.";
+        try (Connection connection = getConnection()) {
+            return connection.isValid(2) ? "Koneksi database berhasil." : "Koneksi database tidak valid.";
         } catch (SQLException ex) {
             return "Koneksi database gagal: " + ex.getMessage();
         }
     }
 
     private static void loadProperties() {
-        try (InputStream input = new FileInputStream(CONFIG_PATH)) {
+        try (InputStream input = openConfig()) {
             PROPERTIES.load(input);
         } catch (IOException ex) {
             PROPERTIES.setProperty("db.url", "jdbc:mysql://localhost:3306/silaundry_db?useSSL=false&serverTimezone=Asia/Jakarta&allowPublicKeyRetrieval=true");
@@ -44,6 +45,18 @@ public final class DatabaseConnection {
             PROPERTIES.setProperty("db.password", "");
             PROPERTIES.setProperty("db.driver", "com.mysql.cj.jdbc.Driver");
         }
+    }
+
+    private static InputStream openConfig() throws IOException {
+        File file = new File(CONFIG_PATH);
+        if (file.isFile()) {
+            return new FileInputStream(file);
+        }
+        InputStream resource = DatabaseConnection.class.getClassLoader().getResourceAsStream("db.properties");
+        if (resource != null) {
+            return resource;
+        }
+        throw new IOException("File konfigurasi database tidak ditemukan.");
     }
 
     private static void loadDriver() {

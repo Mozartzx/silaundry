@@ -17,6 +17,7 @@ import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JPasswordField;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import silaundry.controller.DashboardController;
@@ -36,15 +37,17 @@ public class PemilikPanel extends JPanel {
     private final TarifController tarifController = new TarifController();
     private final JLabel aktifLabel = new JLabel("-");
     private final JLabel pendapatanLabel = new JLabel("-");
+    private final JLabel pendapatanDiterimaLabel = new JLabel("-");
     private final JLabel itemLabel = new JLabel("-");
     private final JLabel pelangganLabel = new JLabel("-");
     private final JTextArea laporanArea = new JTextArea(8, 60);
     private final DefaultTableModel karyawanModel = UiUtil.model("ID", "Username", "Nama", "Telepon", "Shift");
     private final JTable karyawanTable = new JTable(karyawanModel);
+    private final JTextField karyawanSearchField = new JTextField(16);
     private final JTextField usernameField = new JTextField(10);
     private final JTextField namaField = new JTextField(16);
     private final JTextField teleponField = new JTextField(10);
-    private final JTextField passwordField = new JTextField("karyawan123", 10);
+    private final JPasswordField passwordField = new JPasswordField(10);
     private final JTextField shiftField = new JTextField("Pagi", 8);
     private final DefaultTableModel tarifModel = UiUtil.model("ID", "Paket", "Estimasi", "Harga/kg", "Aktif");
     private final JTable tarifTable = new JTable(tarifModel);
@@ -68,7 +71,7 @@ public class PemilikPanel extends JPanel {
 
     private JPanel buildLocalSidebar() {
         JPanel sidebar = AppTheme.compactSurface(new BorderLayout(0, 12));
-        sidebar.setPreferredSize(new java.awt.Dimension(190, 0));
+        sidebar.setPreferredSize(new java.awt.Dimension(170, 0));
         sidebar.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(AppTheme.BORDER),
                 new EmptyBorder(12, 10, 12, 10)));
@@ -134,10 +137,11 @@ public class PemilikPanel extends JPanel {
         header.add(AppTheme.sectionTitle("Dashboard Pemilik"), BorderLayout.NORTH);
         header.add(AppTheme.muted("Ringkasan performa transaksi dan laporan keuangan bulan berjalan."), BorderLayout.CENTER);
 
-        JPanel metrics = new JPanel(new GridLayout(1, 4, 10, 10));
+        JPanel metrics = new JPanel(new GridLayout(2, 3, 10, 10));
         metrics.setBackground(AppTheme.BACKGROUND);
         metrics.add(metricCard("Pesanan Aktif", aktifLabel));
-        metrics.add(metricCard("Estimasi Pendapatan", pendapatanLabel));
+        metrics.add(metricCard("Nilai Pesanan Aktif", pendapatanLabel));
+        metrics.add(metricCard("Pendapatan Bulan Ini", pendapatanDiterimaLabel));
         metrics.add(metricCard("Total Item", itemLabel));
         metrics.add(metricCard("Total Pelanggan", pelangganLabel));
 
@@ -159,6 +163,7 @@ public class PemilikPanel extends JPanel {
         JPanel panel = AppTheme.page(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         UiUtil.applyTableStyle(karyawanTable);
+        UiUtil.installSearch(karyawanTable, karyawanSearchField);
         JPanel form = AppTheme.surface(new BorderLayout(0, 12));
         form.add(AppTheme.sectionTitle("Kelola Karyawan"), BorderLayout.NORTH);
 
@@ -168,6 +173,7 @@ public class PemilikPanel extends JPanel {
         AppTheme.addField(fields, 1, 0, "Telepon", teleponField);
         AppTheme.addField(fields, 1, 1, "Password", passwordField);
         AppTheme.addField(fields, 2, 0, "Shift", shiftField);
+        AppTheme.addField(fields, 2, 1, "Cari", karyawanSearchField);
 
         JButton addButton = AppTheme.primaryButton("Tambah Karyawan");
         addButton.addActionListener(event -> addKaryawan());
@@ -236,6 +242,7 @@ public class PemilikPanel extends JPanel {
         AppTheme.styleTextField(teleponField);
         AppTheme.styleTextField(passwordField);
         AppTheme.styleTextField(shiftField);
+        AppTheme.styleTextField(karyawanSearchField);
         AppTheme.styleComboBox(tarifCombo);
         AppTheme.styleTextField(hargaTarifField);
     }
@@ -247,23 +254,24 @@ public class PemilikPanel extends JPanel {
     }
 
     private void refreshDashboard() {
-        try {
-            DataDasbor data = dashboardController.getDataDasbor();
-            LaporanKeuangan laporan = dashboardController.getLaporanBulanIni();
+        UiUtil.runAsync(this,
+                () -> new DashboardData(dashboardController.getDataDasbor(), dashboardController.getLaporanBulanIni()),
+                hasil -> {
+            DataDasbor data = hasil.dataDasbor();
+            LaporanKeuangan laporan = hasil.laporan();
             aktifLabel.setText(String.valueOf(data.getTotalPesananAktif()));
             pendapatanLabel.setText(UiUtil.money(data.getEstimasiPendapatan()));
+            pendapatanDiterimaLabel.setText(UiUtil.money(data.getPendapatanDiterima()));
             itemLabel.setText(String.valueOf(data.getTotalItem()));
             pelangganLabel.setText(String.valueOf(data.getTotalPelanggan()));
             laporanArea.setText("Laporan bulan ini\n" + laporan.formatDataLaporan());
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal memuat dashboard.", ex);
-        }
+        }, "Gagal memuat dashboard.");
     }
 
     private void refreshKaryawan() {
-        karyawanModel.setRowCount(0);
-        try {
-            for (Karyawan karyawan : penggunaController.getAllKaryawan()) {
+        UiUtil.runAsync(this, penggunaController::getAllKaryawan, rows -> {
+            karyawanModel.setRowCount(0);
+            for (Karyawan karyawan : rows) {
                 karyawanModel.addRow(new Object[] {
                         karyawan.getIdKaryawan(),
                         karyawan.getUsername(),
@@ -272,17 +280,15 @@ public class PemilikPanel extends JPanel {
                         karyawan.getShiftKerja()
                 });
             }
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal memuat data karyawan.", ex);
-        }
+        }, "Gagal memuat data karyawan.");
     }
 
     private void refreshTarif() {
         TarifLaundry selectedTarif = (TarifLaundry) tarifCombo.getSelectedItem();
-        tarifModel.setRowCount(0);
-        tarifCombo.removeAllItems();
-        try {
-            for (TarifLaundry tarif : tarifController.getSemuaTarif()) {
+        UiUtil.runAsync(this, tarifController::getSemuaTarif, rows -> {
+            tarifModel.setRowCount(0);
+            tarifCombo.removeAllItems();
+            for (TarifLaundry tarif : rows) {
                 tarifModel.addRow(new Object[] {
                         tarif.getIdTarif(),
                         tarif.getNamaPaket(),
@@ -296,30 +302,28 @@ public class PemilikPanel extends JPanel {
                 }
             }
             tarifSelected();
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal memuat tarif laundry.", ex);
-        }
+        }, "Gagal memuat tarif laundry.");
     }
 
     private void addKaryawan() {
-        if (usernameField.getText().trim().isEmpty() || namaField.getText().trim().isEmpty()) {
-            UiUtil.info(this, "Username dan nama karyawan wajib diisi.");
-            return;
-        }
-        try {
+        String username = usernameField.getText().trim();
+        String nama = namaField.getText().trim();
+        String telepon = teleponField.getText().trim();
+        String password = new String(passwordField.getPassword());
+        String shift = shiftField.getText().trim();
+        UiUtil.runAsync(this, () -> {
             penggunaController.tambahKaryawan(
-                    usernameField.getText().trim(),
-                    namaField.getText().trim(),
-                    teleponField.getText().trim(),
-                    passwordField.getText().trim(),
-                    shiftField.getText().trim());
+                    username, nama, telepon, password, shift);
+            return null;
+        }, ignored -> {
             usernameField.setText("");
             namaField.setText("");
             teleponField.setText("");
+            passwordField.setText("");
+            shiftField.setText("Pagi");
             refreshKaryawan();
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal menambah karyawan.", ex);
-        }
+            UiUtil.info(this, "Akun karyawan berhasil dibuat.");
+        }, "Gagal menambah karyawan.");
     }
 
     private void deleteKaryawan() {
@@ -328,12 +332,15 @@ public class PemilikPanel extends JPanel {
             UiUtil.info(this, "Pilih karyawan yang akan dinonaktifkan.");
             return;
         }
-        try {
-            penggunaController.hapusKaryawan(idKaryawan);
-            refreshKaryawan();
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal menonaktifkan karyawan.", ex);
+        if (!UiUtil.confirm(this, "Nonaktifkan akun karyawan " + idKaryawan + "?")) {
+            return;
         }
+        UiUtil.runAsync(this, () -> {
+            penggunaController.hapusKaryawan(idKaryawan);
+            return null;
+        }, ignored -> {
+            refreshKaryawan();
+        }, "Gagal menonaktifkan karyawan.");
     }
 
     private void tarifSelected() {
@@ -349,17 +356,23 @@ public class PemilikPanel extends JPanel {
             UiUtil.info(this, "Pilih paket laundry yang akan diubah.");
             return;
         }
+        final double harga;
         try {
-            tarifController.updateHarga(tarif.getPaketLaundry(), Double.parseDouble(hargaTarifField.getText().trim()));
+            harga = Double.parseDouble(hargaTarifField.getText().trim());
+        } catch (NumberFormatException ex) {
+            UiUtil.info(this, "Harga per kilo harus berupa angka.");
+            return;
+        }
+        UiUtil.runAsync(this, () -> {
+            tarifController.updateHarga(tarif.getPaketLaundry(), harga);
+            return null;
+        }, ignored -> {
             refreshTarif();
             refreshDashboard();
             UiUtil.info(this, "Harga " + tarif.getNamaPaket() + " berhasil diperbarui.");
-        } catch (NumberFormatException ex) {
-            UiUtil.info(this, "Harga per kilo harus berupa angka.");
-        } catch (IllegalArgumentException ex) {
-            UiUtil.info(this, ex.getMessage());
-        } catch (SQLException ex) {
-            UiUtil.error(this, "Gagal memperbarui tarif laundry.", ex);
-        }
+        }, "Gagal memperbarui tarif laundry.");
+    }
+
+    private record DashboardData(DataDasbor dataDasbor, LaporanKeuangan laporan) {
     }
 }
