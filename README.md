@@ -78,6 +78,7 @@ class Karyawan {
 
 class Pemilik {
   -String idPemilik
+  +pantauPesanan() void
   +tinjauDasborAnalitik() void
   +unduhLaporanKeuangan() void
   +kelolaDataKaryawan() void
@@ -187,6 +188,7 @@ INotifiable <|.. AppNotifikasi
 INotifiable <|.. WhatsAppNotifikasi
 Pelanggan "1" --> "0..*" Pesanan : memantau
 Karyawan "1" --> "0..*" Pesanan : menginput
+Pemilik --> Pesanan : memantau
 Pemilik --> TarifLaundry : mengatur
 Pesanan "1" *-- "1..*" ItemPakaian : berisi
 Pesanan --> TarifLaundry : memakai harga
@@ -237,6 +239,7 @@ class Karyawan {
 
 class Pemilik {
   -String idPemilik
+  +pantauPesanan() void
   +tinjauDasborAnalitik() void
   +unduhLaporanKeuangan() void
   +kelolaDataKaryawan() void
@@ -660,6 +663,7 @@ Notifikasi --> Pesanan
 
 Pemilik ..> DataDasbor : memantau
 Pemilik ..> LaporanKeuangan : mengakses
+Pemilik ..> Pesanan : memantau
 Pemilik ..> TarifController : mengatur tarif
 TarifController --> TarifLaundryDAO
 TarifLaundryDAO --> TarifLaundry
@@ -729,6 +733,7 @@ KaryawanPanel --> PembayaranController
 KaryawanPanel --> NotifikasiController
 PemilikPanel --> DashboardController
 PemilikPanel --> PenggunaController
+PemilikPanel --> PesananController
 PemilikPanel --> TarifController
 PelangganPanel --> PesananController
 PelangganPanel --> NotifikasiController
@@ -845,7 +850,7 @@ Catatan:
 5. Tambahkan detail item pakaian, jalankan smart grouping, lalu perbarui status pesanan secara berurutan.
 6. Catat pembayaran dan tampilkan link template WhatsApp saat pesanan siap diambil.
 7. Login sebagai pelanggan untuk menunjukkan status aktif, tracking item, notifikasi, dan riwayat pesanan.
-8. Login kembali sebagai pemilik untuk menunjukkan perubahan dashboard dan laporan keuangan.
+8. Login kembali sebagai pemilik untuk memantau pesanan aktif, riwayat pesanan, perubahan dashboard, dan laporan keuangan.
 
 Untuk mengembalikan database yang sudah pernah dipakai ke kondisi awal presentasi tanpa membuat ulang tabel, jalankan `database/reset_presentasi.sql`.
 
@@ -881,6 +886,7 @@ Untuk mengembalikan database yang sudah pernah dipakai ke kondisi awal presentas
 - Membuat template link WhatsApp dari pesanan terpilih
 
 ### Untuk Owner/Pemilik
+- Pantau pesanan aktif dan riwayat pesanan seluruh pelanggan
 - Kelola harga per kilo untuk paket Standard 2 Hari dan Express 1 Hari
 - 📈 Dashboard analitik performa
 - 💰 Laporan keuangan bulanan

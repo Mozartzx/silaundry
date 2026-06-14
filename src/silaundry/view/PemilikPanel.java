@@ -2,7 +2,6 @@ package silaundry.view;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Color;
 import java.awt.GridLayout;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -22,11 +21,14 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import silaundry.controller.DashboardController;
 import silaundry.controller.PenggunaController;
+import silaundry.controller.PesananController;
 import silaundry.controller.TarifController;
 import silaundry.model.DataDasbor;
 import silaundry.model.Karyawan;
 import silaundry.model.LaporanKeuangan;
+import silaundry.model.Pesanan;
 import silaundry.model.TarifLaundry;
+import silaundry.model.enums.StatusPesanan;
 
 public class PemilikPanel extends JPanel {
     private final CardLayout cardLayout = new CardLayout();
@@ -34,6 +36,7 @@ public class PemilikPanel extends JPanel {
     private final List<JButton> menuButtons = new ArrayList<>();
     private final DashboardController dashboardController = new DashboardController();
     private final PenggunaController penggunaController = new PenggunaController();
+    private final PesananController pesananController = new PesananController();
     private final TarifController tarifController = new TarifController();
     private final JLabel aktifLabel = new JLabel("-");
     private final JLabel pendapatanLabel = new JLabel("-");
@@ -41,6 +44,15 @@ public class PemilikPanel extends JPanel {
     private final JLabel itemLabel = new JLabel("-");
     private final JLabel pelangganLabel = new JLabel("-");
     private final JTextArea laporanArea = new JTextArea(8, 60);
+    private final JLabel pesananSummaryLabel = AppTheme.muted("Memuat data pesanan...");
+    private final DefaultTableModel activeOrderModel = UiUtil.model("ID", "Pelanggan", "Karyawan", "Tanggal",
+            "Estimasi", "Paket", "Berat", "Status", "Total", "Catatan");
+    private final DefaultTableModel historyOrderModel = UiUtil.model("ID", "Pelanggan", "Karyawan", "Tanggal",
+            "Estimasi", "Paket", "Berat", "Status", "Total", "Catatan");
+    private final JTable activeOrderTable = new JTable(activeOrderModel);
+    private final JTable historyOrderTable = new JTable(historyOrderModel);
+    private final JTextField activeOrderSearchField = new JTextField(16);
+    private final JTextField historyOrderSearchField = new JTextField(16);
     private final DefaultTableModel karyawanModel = UiUtil.model("ID", "Username", "Nama", "Telepon", "Shift");
     private final JTable karyawanTable = new JTable(karyawanModel);
     private final JTextField karyawanSearchField = new JTextField(16);
@@ -62,6 +74,7 @@ public class PemilikPanel extends JPanel {
         tarifCombo.addActionListener(event -> tarifSelected());
         contentPanel.setBackground(AppTheme.BACKGROUND);
         contentPanel.add(buildDashboardPanel(), "Dashboard");
+        contentPanel.add(buildMonitoringPanel(), "Pantau Pesanan");
         contentPanel.add(buildKaryawanPanel(), "Kelola Karyawan");
         contentPanel.add(buildTarifPanel(), "Tarif Laundry");
         add(buildLocalSidebar(), BorderLayout.WEST);
@@ -85,6 +98,7 @@ public class PemilikPanel extends JPanel {
         menu.setBackground(AppTheme.SURFACE);
         menu.setLayout(new BoxLayout(menu, BoxLayout.Y_AXIS));
         addMenu(menu, "Dashboard");
+        addMenu(menu, "Pantau Pesanan");
         addMenu(menu, "Kelola Karyawan");
         addMenu(menu, "Tarif Laundry");
 
@@ -109,24 +123,14 @@ public class PemilikPanel extends JPanel {
 
     private JButton localMenuButton(String text) {
         JButton button = new JButton(text);
-        button.setHorizontalAlignment(JButton.LEFT);
-        button.setFocusPainted(false);
-        button.setOpaque(true);
-        button.setContentAreaFilled(true);
-        button.setBackground(AppTheme.SURFACE);
-        button.setForeground(AppTheme.TEXT);
-        button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AppTheme.BORDER),
-                new EmptyBorder(10, 10, 10, 10)));
+        AppTheme.styleLightMenuButton(button);
         button.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, 42));
         return button;
     }
 
     private void setActiveMenu(JButton activeButton) {
         for (JButton button : menuButtons) {
-            boolean active = button == activeButton;
-            button.setBackground(active ? new Color(217, 237, 239) : AppTheme.SURFACE);
-            button.setForeground(active ? AppTheme.PRIMARY_DARK : AppTheme.TEXT);
+            AppTheme.setLightMenuButtonActive(button, button == activeButton);
         }
     }
 
@@ -194,6 +198,53 @@ public class PemilikPanel extends JPanel {
         return panel;
     }
 
+    private JPanel buildMonitoringPanel() {
+        JPanel panel = AppTheme.page(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        UiUtil.applyTableStyle(activeOrderTable);
+        UiUtil.applyTableStyle(historyOrderTable);
+        UiUtil.installSearch(activeOrderTable, activeOrderSearchField);
+        UiUtil.installSearch(historyOrderTable, historyOrderSearchField);
+
+        JPanel header = AppTheme.surface(new BorderLayout(10, 6));
+        JPanel title = new JPanel(new GridLayout(2, 1, 0, 3));
+        title.setBackground(AppTheme.SURFACE);
+        title.add(AppTheme.sectionTitle("Pantau Pesanan"));
+        title.add(pesananSummaryLabel);
+        JButton refreshButton = AppTheme.primaryButton("Refresh Pesanan");
+        refreshButton.addActionListener(event -> refreshPesanan());
+        header.add(title, BorderLayout.CENTER);
+        header.add(refreshButton, BorderLayout.EAST);
+
+        JPanel tables = new JPanel(new GridLayout(2, 1, 0, 10));
+        tables.setBackground(AppTheme.BACKGROUND);
+        tables.add(buildOrderSection("Pesanan Aktif", "Pesanan yang masih diproses atau siap diambil.",
+                activeOrderTable, activeOrderSearchField));
+        tables.add(buildOrderSection("Riwayat Pesanan", "Pesanan yang selesai atau dibatalkan.",
+                historyOrderTable, historyOrderSearchField));
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(tables, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildOrderSection(String titleText, String subtitle, JTable table, JTextField searchField) {
+        JPanel section = AppTheme.surface(new BorderLayout(0, 8));
+        JPanel heading = new JPanel(new BorderLayout(12, 0));
+        heading.setBackground(AppTheme.SURFACE);
+        JPanel labels = new JPanel(new GridLayout(2, 1, 0, 2));
+        labels.setBackground(AppTheme.SURFACE);
+        labels.add(AppTheme.sectionTitle(titleText));
+        labels.add(AppTheme.muted(subtitle));
+        JPanel search = AppTheme.formGrid();
+        AppTheme.addField(search, 0, 0, "Cari", searchField);
+        heading.add(labels, BorderLayout.CENTER);
+        heading.add(search, BorderLayout.EAST);
+        section.add(heading, BorderLayout.NORTH);
+        section.add(AppTheme.scroll(table), BorderLayout.CENTER);
+        return section;
+    }
+
     private JPanel buildTarifPanel() {
         JPanel panel = AppTheme.page(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
@@ -243,12 +294,15 @@ public class PemilikPanel extends JPanel {
         AppTheme.styleTextField(passwordField);
         AppTheme.styleTextField(shiftField);
         AppTheme.styleTextField(karyawanSearchField);
+        AppTheme.styleTextField(activeOrderSearchField);
+        AppTheme.styleTextField(historyOrderSearchField);
         AppTheme.styleComboBox(tarifCombo);
         AppTheme.styleTextField(hargaTarifField);
     }
 
     private void refreshAll() {
         refreshDashboard();
+        refreshPesanan();
         refreshKaryawan();
         refreshTarif();
     }
@@ -281,6 +335,46 @@ public class PemilikPanel extends JPanel {
                 });
             }
         }, "Gagal memuat data karyawan.");
+    }
+
+    private void refreshPesanan() {
+        UiUtil.runAsync(this, pesananController::getAllPesanan, rows -> {
+            activeOrderModel.setRowCount(0);
+            historyOrderModel.setRowCount(0);
+            int activeCount = 0;
+            int historyCount = 0;
+            for (Pesanan pesanan : rows) {
+                if (isOrderHistory(pesanan)) {
+                    historyOrderModel.addRow(toOrderRow(pesanan));
+                    historyCount++;
+                } else {
+                    activeOrderModel.addRow(toOrderRow(pesanan));
+                    activeCount++;
+                }
+            }
+            pesananSummaryLabel.setText(activeCount + " pesanan aktif dan " + historyCount
+                    + " pesanan dalam riwayat.");
+        }, "Gagal memuat data pesanan untuk pemilik.");
+    }
+
+    private Object[] toOrderRow(Pesanan pesanan) {
+        return new Object[] {
+                pesanan.getIdPesanan(),
+                pesanan.getNamaPelanggan(),
+                pesanan.getNamaKaryawan() == null ? "-" : pesanan.getNamaKaryawan(),
+                pesanan.getTanggalMasuk(),
+                pesanan.getEstimasiSelesai(),
+                pesanan.getPaketLaundry().getDisplayName(),
+                String.format("%.2f kg", pesanan.getBeratKg()),
+                pesanan.getStatusPesanan().getDisplayName(),
+                UiUtil.money(pesanan.getTotalBiaya()),
+                pesanan.getCatatan()
+        };
+    }
+
+    private boolean isOrderHistory(Pesanan pesanan) {
+        return pesanan.getStatusPesanan() == StatusPesanan.SELESAI
+                || pesanan.getStatusPesanan() == StatusPesanan.DIBATALKAN;
     }
 
     private void refreshTarif() {

@@ -120,15 +120,7 @@ public class MainFrame extends JFrame {
 
     private JButton sidebarButton(String title, String subtitle) {
         JButton button = new JButton("<html><b>" + title + "</b><br><span style='font-size:10px'>" + subtitle + "</span></html>");
-        button.setHorizontalAlignment(JButton.LEFT);
-        button.setFocusPainted(false);
-        button.setOpaque(true);
-        button.setContentAreaFilled(true);
-        button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(42, 98, 105)),
-                new EmptyBorder(10, 12, 10, 12)));
-        button.setBackground(new Color(27, 96, 104));
-        button.setForeground(Color.WHITE);
+        AppTheme.styleSidebarButton(button);
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
         return button;
     }
@@ -141,9 +133,7 @@ public class MainFrame extends JFrame {
 
     private void setActiveButton(JButton activeButton) {
         for (JButton button : navButtons) {
-            boolean active = button == activeButton;
-            button.setBackground(active ? AppTheme.ACCENT : new Color(27, 96, 104));
-            button.setForeground(active ? new Color(31, 41, 55) : Color.WHITE);
+            AppTheme.setSidebarButtonActive(button, button == activeButton);
         }
     }
 }

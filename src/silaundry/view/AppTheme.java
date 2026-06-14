@@ -22,6 +22,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicButtonUI;
 
 public final class AppTheme {
     public static final Color BACKGROUND = new Color(245, 247, 250);
@@ -109,7 +110,7 @@ public final class AppTheme {
 
     public static JButton secondaryButton(String text) {
         JButton button = new JButton(text);
-        styleButton(button, new Color(229, 244, 247), PRIMARY_DARK);
+        styleButton(button, SURFACE, PRIMARY_DARK);
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(111, 159, 168)),
                 new EmptyBorder(8, 13, 8, 13)));
@@ -124,16 +125,100 @@ public final class AppTheme {
     }
 
     public static void styleButton(JButton button, Color background, Color foreground) {
+        Color hoverBackground = isLight(background) ? new Color(217, 237, 239) : background.brighter();
+        Color pressedBackground = isLight(background) ? new Color(198, 225, 229) : background.darker();
+        Color stateForeground = isLight(background) ? PRIMARY_DARK : foreground;
+
+        button.setUI(new BasicButtonUI());
         button.setBackground(background);
-        button.setForeground(foreground);
+        button.setForeground(stateForeground);
         button.setFocusPainted(false);
         button.setOpaque(true);
         button.setContentAreaFilled(true);
+        button.setRolloverEnabled(true);
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(background.darker()),
                 new EmptyBorder(8, 13, 8, 13)));
         button.setMinimumSize(new Dimension(96, 36));
+        button.getModel().addChangeListener(event -> {
+            boolean active = Boolean.TRUE.equals(button.getClientProperty("silaundry.active"));
+            if (!button.isEnabled()) {
+                button.setBackground(new Color(238, 241, 245));
+                button.setForeground(MUTED);
+            } else if (button.getModel().isPressed()) {
+                button.setBackground(pressedBackground);
+                button.setForeground(stateForeground);
+            } else if (button.getModel().isRollover()) {
+                button.setBackground(hoverBackground);
+                button.setForeground(stateForeground);
+            } else {
+                button.setBackground(active ? hoverBackground : background);
+                button.setForeground(stateForeground);
+            }
+        });
+    }
+
+    public static void styleLightMenuButton(JButton button) {
+        styleButton(button, SURFACE, TEXT);
+        button.putClientProperty("silaundry.active", false);
+        button.setHorizontalAlignment(JButton.LEFT);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER),
+                new EmptyBorder(10, 10, 10, 10)));
+    }
+
+    public static void setLightMenuButtonActive(JButton button, boolean active) {
+        button.putClientProperty("silaundry.active", active);
+        button.setBackground(active ? new Color(217, 237, 239) : SURFACE);
+        button.setForeground(active ? PRIMARY_DARK : TEXT);
+    }
+
+    public static void styleSidebarButton(JButton button) {
+        Color normalBackground = new Color(27, 96, 104);
+        Color hoverBackground = new Color(224, 241, 243);
+        Color pressedBackground = new Color(198, 225, 229);
+
+        button.setUI(new BasicButtonUI());
+        button.putClientProperty("silaundry.active", false);
+        button.setHorizontalAlignment(JButton.LEFT);
+        button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
+        button.setRolloverEnabled(true);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(42, 98, 105)),
+                new EmptyBorder(10, 12, 10, 12)));
+        button.setBackground(normalBackground);
+        button.setForeground(Color.WHITE);
+        button.getModel().addChangeListener(event -> {
+            boolean active = Boolean.TRUE.equals(button.getClientProperty("silaundry.active"));
+            if (button.getModel().isPressed()) {
+                button.setBackground(pressedBackground);
+                button.setForeground(PRIMARY_DARK);
+            } else if (button.getModel().isRollover()) {
+                button.setBackground(hoverBackground);
+                button.setForeground(PRIMARY_DARK);
+            } else if (active) {
+                button.setBackground(ACCENT);
+                button.setForeground(TEXT);
+            } else {
+                button.setBackground(normalBackground);
+                button.setForeground(Color.WHITE);
+            }
+        });
+    }
+
+    public static void setSidebarButtonActive(JButton button, boolean active) {
+        button.putClientProperty("silaundry.active", active);
+        button.setBackground(active ? ACCENT : new Color(27, 96, 104));
+        button.setForeground(active ? TEXT : Color.WHITE);
+    }
+
+    private static boolean isLight(Color color) {
+        double brightness = (color.getRed() * 299 + color.getGreen() * 587 + color.getBlue() * 114) / 1000.0;
+        return brightness >= 180;
     }
 
     public static JPanel formGrid() {

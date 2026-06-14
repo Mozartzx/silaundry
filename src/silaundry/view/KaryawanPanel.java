@@ -2,7 +2,6 @@ package silaundry.view;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Color;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.sql.SQLException;
@@ -135,24 +134,14 @@ public class KaryawanPanel extends JPanel {
 
     private JButton localMenuButton(String text) {
         JButton button = new JButton(text);
-        button.setHorizontalAlignment(JButton.LEFT);
-        button.setFocusPainted(false);
-        button.setOpaque(true);
-        button.setContentAreaFilled(true);
-        button.setBackground(AppTheme.SURFACE);
-        button.setForeground(AppTheme.TEXT);
-        button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AppTheme.BORDER),
-                new EmptyBorder(10, 10, 10, 10)));
+        AppTheme.styleLightMenuButton(button);
         button.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, 42));
         return button;
     }
 
     private void setActiveMenu(JButton activeButton) {
         for (JButton button : menuButtons) {
-            boolean active = button == activeButton;
-            button.setBackground(active ? new Color(217, 237, 239) : AppTheme.SURFACE);
-            button.setForeground(active ? AppTheme.PRIMARY_DARK : AppTheme.TEXT);
+            AppTheme.setLightMenuButtonActive(button, button == activeButton);
         }
     }
 
