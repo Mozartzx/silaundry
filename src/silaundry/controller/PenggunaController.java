@@ -43,9 +43,11 @@ public class PenggunaController {
     public void tambahKaryawan(String username, String nama, String telepon, String password, String shift)
             throws SQLException {
         validasiPengguna(username, nama, telepon, password);
-        if (shift == null || shift.trim().length() < 3) {
-            throw new IllegalArgumentException("Shift kerja minimal 3 karakter.");
+        String shiftBersih = shift == null ? "" : shift.trim();
+        if (!shiftBersih.equalsIgnoreCase("Pagi") && !shiftBersih.equalsIgnoreCase("Malam")) {
+            throw new IllegalArgumentException("Shift kerja hanya dapat dipilih Pagi atau Malam.");
         }
+        shiftBersih = shiftBersih.equalsIgnoreCase("Pagi") ? "Pagi" : "Malam";
         Karyawan karyawan = new Karyawan(
                 IdGenerator.generate("USR"),
                 username.trim(),
@@ -53,7 +55,7 @@ public class PenggunaController {
                 telepon.replaceAll("[^0-9]", ""),
                 PasswordUtil.hash(password),
                 IdGenerator.generate("KRY"),
-                shift.trim());
+                shiftBersih);
         userDAO.createKaryawan(karyawan);
     }
 

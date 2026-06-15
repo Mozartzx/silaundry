@@ -65,7 +65,7 @@ public class PemilikPanel extends JPanel {
     private final JTextField namaField = new JTextField(16);
     private final JTextField teleponField = new JTextField(10);
     private final JPasswordField passwordField = new JPasswordField(10);
-    private final JTextField shiftField = new JTextField("Pagi", 8);
+    private final JComboBox<String> shiftCombo = new JComboBox<>(new String[] { "Pagi", "Malam" });
 
     private final DefaultTableModel tarifModel = UiUtil.model("ID", "Paket", "Estimasi", "Harga/kg", "Aktif");
     private final JTable tarifTable = new JTable(tarifModel);
@@ -167,7 +167,7 @@ public class PemilikPanel extends JPanel {
         AppTheme.addField(fields, 0, 1, "Nama", namaField);
         AppTheme.addField(fields, 1, 0, "Telepon", teleponField);
         AppTheme.addField(fields, 1, 1, "Password", passwordField);
-        AppTheme.addField(fields, 2, 0, "Shift", shiftField);
+        AppTheme.addField(fields, 2, 0, "Shift", shiftCombo);
         AppTheme.addField(fields, 2, 1, "Cari", karyawanSearchField);
 
         JButton addButton = AppTheme.primaryButton("Tambah Karyawan");
@@ -260,7 +260,7 @@ public class PemilikPanel extends JPanel {
         AppTheme.styleTextField(namaField);
         AppTheme.styleTextField(teleponField);
         AppTheme.styleTextField(passwordField);
-        AppTheme.styleTextField(shiftField);
+        AppTheme.styleComboBox(shiftCombo);
         AppTheme.styleTextField(karyawanSearchField);
         AppTheme.styleComboBox(tarifCombo);
         AppTheme.styleTextField(hargaTarifField);
@@ -358,14 +358,14 @@ public class PemilikPanel extends JPanel {
         String password = new String(passwordField.getPassword());
         UiUtil.runAsync(this, () -> {
             penggunaController.tambahKaryawan(usernameField.getText().trim(), namaField.getText().trim(),
-                    teleponField.getText().trim(), password, shiftField.getText().trim());
+                    teleponField.getText().trim(), password, shiftCombo.getSelectedItem().toString());
             return null;
         }, ignored -> {
             usernameField.setText("");
             namaField.setText("");
             teleponField.setText("");
             passwordField.setText("");
-            shiftField.setText("Pagi");
+            shiftCombo.setSelectedItem("Pagi");
             refreshKaryawan();
             UiUtil.info(this, "Akun karyawan berhasil dibuat.");
         }, "Gagal menambah karyawan.");

@@ -39,7 +39,7 @@ CREATE TABLE karyawan (
     shift_kerja VARCHAR(30) NOT NULL,
     FOREIGN KEY (id_pengguna) REFERENCES pengguna(id_pengguna)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT chk_karyawan_shift CHECK (CHAR_LENGTH(shift_kerja) >= 3)
+    CONSTRAINT chk_karyawan_shift CHECK (shift_kerja IN ('Pagi', 'Malam'))
 );
 
 CREATE TABLE pemilik (

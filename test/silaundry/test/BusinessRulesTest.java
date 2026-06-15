@@ -5,6 +5,7 @@ import silaundry.model.Pembayaran;
 import silaundry.model.enums.KategoriWarna;
 import silaundry.model.enums.StatusPembayaran;
 import silaundry.model.enums.StatusPesanan;
+import silaundry.controller.PenggunaController;
 import silaundry.service.WhatsAppNotifikasi;
 import silaundry.util.PasswordUtil;
 
@@ -18,6 +19,7 @@ public final class BusinessRulesTest {
         testStatusPembayaran();
         testSmartGrouping();
         testWhatsAppDanPassword();
+        testPilihanShift();
         System.out.println("Semua business rules test berhasil.");
     }
 
@@ -70,6 +72,18 @@ public final class BusinessRulesTest {
         String hash = PasswordUtil.hash("rahasia");
         check(PasswordUtil.matches("rahasia", hash), "Password harus cocok dengan hash-nya");
         check(!PasswordUtil.matches("salah", hash), "Password salah tidak boleh cocok");
+    }
+
+    private static void testPilihanShift() {
+        PenggunaController controller = new PenggunaController();
+        try {
+            controller.tambahKaryawan("testshift", "Test Shift", "081234567890", "rahasia", "Siang");
+            throw new AssertionError("Shift selain Pagi atau Malam harus ditolak");
+        } catch (IllegalArgumentException expected) {
+            // Validasi berhenti sebelum operasi database.
+        } catch (Exception ex) {
+            throw new AssertionError("Validasi shift tidak boleh mengakses database", ex);
+        }
     }
 
     private static void check(boolean condition, String message) {
