@@ -9,7 +9,9 @@ import silaundry.model.DataDasbor;
 import silaundry.model.LaporanKeuangan;
 import silaundry.util.DatabaseConnection;
 
+// Mengambil hasil perhitungan dashboard dan laporan langsung dari transaksi database.
 public class DashboardDAO {
+    // Query ini menghitung metrik dashboard tanpa menyimpan angka ringkasan manual.
     public DataDasbor getDataDasbor() throws SQLException {
         String sql = """
                 SELECT
@@ -37,6 +39,7 @@ public class DashboardDAO {
         }
     }
 
+    // Laporan hanya menjumlahkan pembayaran lunas pada bulan yang sedang berjalan.
     public LaporanKeuangan getLaporanBulanIni() throws SQLException {
         String sql = """
                 SELECT

@@ -5,11 +5,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import silaundry.controller.ItemController;
-import silaundry.controller.PembayaranController;
-import silaundry.controller.PesananController;
+import java.util.List;
+import silaundry.controller.LaundryController;
+import silaundry.controller.PenggunaController;
 import silaundry.dao.DashboardDAO;
 import silaundry.model.Pembayaran;
+import silaundry.model.RiwayatPembayaran;
 import silaundry.model.enums.KategoriWarna;
 import silaundry.model.enums.StatusPembayaran;
 import silaundry.model.enums.StatusPesanan;
@@ -31,6 +32,7 @@ public final class DatabaseIntegrationTest {
             testSmartGroupingEksplisit();
             testPenguncianItem();
             testStatusDanNotifikasiAtomik();
+            testHapusKaryawanTetapMenjagaPesanan();
             System.out.println("Semua database integration test berhasil.");
         } finally {
             cleanup();
@@ -38,7 +40,7 @@ public final class DatabaseIntegrationTest {
     }
 
     private static void testPembayaranLunas() throws Exception {
-        PembayaranController controller = new PembayaranController();
+        LaundryController controller = new LaundryController();
         DashboardDAO dashboardDAO = new DashboardDAO();
         double pendapatanSebelum = dashboardDAO.getDataDasbor().getPendapatanDiterima();
         Pembayaran pembayaran = controller.catatPembayaran("TSTORD1", "Tunai");
@@ -50,13 +52,19 @@ public final class DatabaseIntegrationTest {
                 "Pembayaran lunas harus masuk pendapatan dashboard");
         check(dashboardDAO.getLaporanBulanIni().getTotalPendapatan() == pendapatanSebelum + 10_000,
                 "Laporan harus memakai nominal pembayaran lunas");
+        check(controller.getPesananBelumBayar().stream()
+                .noneMatch(pesanan -> "TSTORD1".equals(pesanan.getIdPesanan())),
+                "Pesanan lunas tidak boleh muncul di pilihan pembayaran");
+        List<RiwayatPembayaran> riwayat = controller.getRiwayatPembayaran();
+        check(riwayat.get(0).getStatus() == StatusPembayaran.BELUM_BAYAR,
+                "Tagihan belum lunas harus tampil sebelum pembayaran lunas");
 
         expectIllegalArgument(() -> controller.catatPembayaran("TSTORD1", "QRIS"));
-        expectIllegalArgument(() -> new PesananController().batalkanPesanan("TSTORD1"));
+        expectIllegalArgument(() -> new LaundryController().batalkanPesanan("TSTORD1"));
     }
 
     private static void testSmartGroupingEksplisit() throws Exception {
-        ItemController controller = new ItemController();
+        LaundryController controller = new LaundryController();
         controller.tambahItem("TSTORD1", "Kemeja", KategoriWarna.PUTIH, "Normal", "Ukuran M");
         check("Belum Dikelompokkan".equals(queryString(
                 "SELECT label_smart_group FROM item_pakaian WHERE id_pesanan='TSTORD1' LIMIT 1")),
@@ -69,14 +77,14 @@ public final class DatabaseIntegrationTest {
     }
 
     private static void testPenguncianItem() throws Exception {
-        ItemController controller = new ItemController();
+        LaundryController controller = new LaundryController();
         expectIllegalArgument(() -> controller.tambahItem(
                 "TSTORD2", "Kaos", KategoriWarna.GELAP, "Normal", "Kaos hitam ukuran L"));
         expectIllegalArgument(() -> controller.hapusItem("TSTITM2"));
     }
 
     private static void testStatusDanNotifikasiAtomik() throws Exception {
-        PesananController controller = new PesananController();
+        LaundryController controller = new LaundryController();
         check(controller.updateStatus("TSTORD3", StatusPesanan.SIAP_DIAMBIL),
                 "Status DISETRIKA harus dapat menjadi SIAP_DIAMBIL");
         check("SIAP_DIAMBIL".equals(queryString(
@@ -88,6 +96,19 @@ public final class DatabaseIntegrationTest {
                 "Update ke status yang sama tidak boleh dianggap perubahan");
         check(queryInt("SELECT COUNT(*) FROM notifikasi WHERE id_pesanan='TSTORD3'") == 1,
                 "Retry status yang sama tidak boleh menggandakan notifikasi");
+    }
+
+    private static void testHapusKaryawanTetapMenjagaPesanan() throws Exception {
+        // Karyawan boleh dihapus, tetapi pesanan lama tetap menjadi bagian dari riwayat usaha.
+        new PenggunaController().hapusKaryawan(EMPLOYEE_ID);
+        check(queryInt("SELECT COUNT(*) FROM karyawan WHERE id_karyawan='" + EMPLOYEE_ID + "'") == 0,
+                "Data karyawan harus benar-benar dihapus");
+        check(queryInt("SELECT COUNT(*) FROM pengguna WHERE id_pengguna='TSTUSR1'") == 0,
+                "Akun pengguna milik karyawan harus ikut dihapus");
+        check(queryInt("SELECT COUNT(*) FROM pesanan WHERE id_pesanan LIKE 'TSTORD%'") == 3,
+                "Riwayat pesanan tidak boleh ikut terhapus");
+        check(queryInt("SELECT COUNT(*) FROM pesanan WHERE id_pesanan LIKE 'TSTORD%' AND id_karyawan IS NULL") == 3,
+                "Pesanan lama harus melepaskan referensi karyawan yang dihapus");
     }
 
     private static void setup() throws SQLException {

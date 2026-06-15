@@ -2,6 +2,7 @@ package silaundry.model;
 
 import silaundry.model.enums.PaketLaundry;
 
+// Menyimpan paket laundry, lama pengerjaan, dan harga yang berlaku per kilogram.
 public class TarifLaundry {
     private String idTarif;
     private PaketLaundry paketLaundry;

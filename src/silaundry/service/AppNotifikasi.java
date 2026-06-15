@@ -1,16 +1,17 @@
 package silaundry.service;
 
 import java.sql.SQLException;
-import silaundry.dao.NotifikasiDAO;
+import silaundry.dao.LaundryDAO;
 import silaundry.model.INotifiable;
 import silaundry.model.Notifikasi;
 
+// Implementasi notifikasi yang menyimpan pesan agar dapat ditampilkan di aplikasi.
 public class AppNotifikasi implements INotifiable {
-    private final NotifikasiDAO notifikasiDAO = new NotifikasiDAO();
+    private final LaundryDAO laundryDAO = new LaundryDAO();
 
     @Override
     public void kirimNotifikasi(Notifikasi notifikasi) throws SQLException {
-        notifikasiDAO.create(notifikasi);
+        laundryDAO.createNotifikasi(notifikasi);
     }
 
     public String tampilkanDiAplikasi(Notifikasi notifikasi) {

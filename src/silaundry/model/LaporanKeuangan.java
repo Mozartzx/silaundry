@@ -1,5 +1,6 @@
 package silaundry.model;
 
+// Menampung hasil rekap pendapatan dan jumlah pesanan pada periode tertentu.
 public class LaporanKeuangan {
     private String idLaporan;
     private String periodeBulan;

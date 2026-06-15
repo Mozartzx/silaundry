@@ -2,6 +2,7 @@ package silaundry.model;
 
 import silaundry.model.enums.Role;
 
+// Representasi akun pelanggan yang dapat memantau status dan riwayat laundry.
 public class Pelanggan extends Pengguna {
     private String idPelanggan;
     private String alamat;

@@ -21,6 +21,7 @@ import silaundry.model.Pelanggan;
 import silaundry.model.Pemilik;
 import silaundry.model.Pengguna;
 
+// Kerangka dashboard yang membentuk sidebar dan halaman sesuai role pengguna.
 public class MainFrame extends JFrame {
     private final Pengguna pengguna;
     private final CardLayout cardLayout = new CardLayout();
@@ -41,6 +42,7 @@ public class MainFrame extends JFrame {
     }
 
     private JPanel buildShell() {
+        // Menu yang didaftarkan ditentukan dari subclass pengguna hasil login.
         JPanel shell = new JPanel(new BorderLayout());
         shell.setBackground(AppTheme.BACKGROUND);
         shell.add(buildSidebar(), BorderLayout.WEST);
@@ -61,7 +63,7 @@ public class MainFrame extends JFrame {
             addRoute("Dashboard", "Ringkasan usaha", new PemilikPanel(PemilikPanel.Page.DASHBOARD));
             addRoute("Pantau Pesanan", "Semua transaksi laundry", new PemilikPanel(PemilikPanel.Page.PESANAN));
             addRoute("Daftar Pelanggan", "Lihat pelanggan terdaftar", new PemilikPanel(PemilikPanel.Page.PELANGGAN));
-            addRoute("Kelola Karyawan", "Tambah dan nonaktifkan akun", new PemilikPanel(PemilikPanel.Page.KARYAWAN));
+            addRoute("Kelola Karyawan", "Tambah dan hapus akun", new PemilikPanel(PemilikPanel.Page.KARYAWAN));
             addRoute("Tarif Laundry", "Atur harga per kilo", new PemilikPanel(PemilikPanel.Page.TARIF));
         }
         selectFirstRoute();
@@ -69,6 +71,7 @@ public class MainFrame extends JFrame {
     }
 
     private JPanel buildSidebar() {
+        // Sidebar tetap sama, sedangkan daftar menunya menyesuaikan role.
         JPanel sidebar = new JPanel(new BorderLayout());
         sidebar.setPreferredSize(new Dimension(220, 0));
         sidebar.setBackground(AppTheme.PRIMARY_DARK);
@@ -114,6 +117,7 @@ public class MainFrame extends JFrame {
     }
 
     private void addRoute(String title, String subtitle, Component content) {
+        // Setiap route mempunyai tombol navigasi dan panel CardLayout dengan nama yang sama.
         contentPanel.add(content, title);
         JButton button = sidebarButton(title, subtitle);
         button.addActionListener(event -> {

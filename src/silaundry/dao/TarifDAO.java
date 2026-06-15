@@ -11,7 +11,9 @@ import silaundry.model.TarifLaundry;
 import silaundry.model.enums.PaketLaundry;
 import silaundry.util.DatabaseConnection;
 
-public class TarifLaundryDAO {
+// Membaca serta memperbarui tarif laundry yang tersimpan di tabel tarif_laundry.
+public class TarifDAO {
+    // Mengambil semua tarif untuk halaman pengaturan pemilik.
     public List<TarifLaundry> findAll() throws SQLException {
         String sql = "SELECT * FROM tarif_laundry ORDER BY estimasi_hari DESC, paket_laundry";
         List<TarifLaundry> rows = new ArrayList<>();
@@ -25,6 +27,7 @@ public class TarifLaundryDAO {
         return rows;
     }
 
+    // Mengambil tarif aktif yang boleh dipakai pada pesanan baru.
     public List<TarifLaundry> findActive() throws SQLException {
         String sql = "SELECT * FROM tarif_laundry WHERE aktif = TRUE ORDER BY estimasi_hari DESC, paket_laundry";
         List<TarifLaundry> rows = new ArrayList<>();
@@ -38,6 +41,7 @@ public class TarifLaundryDAO {
         return rows;
     }
 
+    // Mencari satu tarif aktif berdasarkan jenis paket laundry.
     public TarifLaundry findByPaket(PaketLaundry paketLaundry) throws SQLException {
         String sql = "SELECT * FROM tarif_laundry WHERE paket_laundry = ? AND aktif = TRUE LIMIT 1";
         try (Connection connection = DatabaseConnection.getConnection();
@@ -49,6 +53,7 @@ public class TarifLaundryDAO {
         }
     }
 
+    // Menyimpan harga baru tanpa mengubah harga snapshot pada pesanan lama.
     public void updateHarga(PaketLaundry paketLaundry, double hargaPerKg) throws SQLException {
         String sql = "UPDATE tarif_laundry SET harga_per_kg = ? WHERE paket_laundry = ?";
         try (Connection connection = DatabaseConnection.getConnection();

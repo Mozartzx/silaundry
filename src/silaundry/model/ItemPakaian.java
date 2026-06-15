@@ -2,6 +2,7 @@ package silaundry.model;
 
 import silaundry.model.enums.KategoriWarna;
 
+// Menyimpan ciri setiap pakaian agar item pelanggan tidak mudah tertukar.
 public class ItemPakaian {
     private String idItem;
     private String idPesanan;
@@ -23,6 +24,7 @@ public class ItemPakaian {
     }
 
     public void terapkanGrupWarna() {
+        // Label grup diambil dari enum supaya aturan warna tidak tersebar di banyak tempat.
         this.labelSmartGroup = kategoriWarna.getSmartGroupLabel();
     }
 

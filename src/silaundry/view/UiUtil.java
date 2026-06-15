@@ -5,9 +5,11 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.text.NumberFormat;
 import java.util.Locale;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import javax.swing.JOptionPane;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JComboBox;
+import javax.swing.JList;
 import javax.swing.JTextField;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
@@ -17,9 +19,8 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableRowSorter;
 import javax.swing.RowFilter;
-import javax.swing.SwingUtilities;
-import javax.swing.SwingWorker;
 
+// Berisi helper tabel, dialog, format rupiah, dropdown, dan eksekusi aksi dari view.
 public final class UiUtil {
     private static final NumberFormat RUPIAH = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
 
@@ -83,44 +84,27 @@ public final class UiUtil {
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
     }
 
-    public static <T> void runAsync(Component parent, BackgroundTask<T> task,
+    public static <T> void runTask(Component parent, Task<T> task,
             Consumer<T> onSuccess, String errorMessage) {
-        Component cursorTarget = SwingUtilities.getWindowAncestor(parent);
-        if (cursorTarget == null) {
-            cursorTarget = parent;
+        // Helper ini menyamakan cursor, penanganan error, dan callback sukses di semua view.
+        parent.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        try {
+            T result = task.run();
+            parent.setCursor(Cursor.getDefaultCursor());
+            onSuccess.accept(result);
+        } catch (IllegalArgumentException ex) {
+            parent.setCursor(Cursor.getDefaultCursor());
+            info(parent, ex.getMessage());
+        } catch (Exception ex) {
+            parent.setCursor(Cursor.getDefaultCursor());
+            error(parent, errorMessage, ex);
+        } finally {
+            parent.setCursor(Cursor.getDefaultCursor());
         }
-        Component finalCursorTarget = cursorTarget;
-        finalCursorTarget.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        new SwingWorker<T, Void>() {
-            @Override
-            protected T doInBackground() throws Exception {
-                return task.run();
-            }
-
-            @Override
-            protected void done() {
-                finalCursorTarget.setCursor(Cursor.getDefaultCursor());
-                try {
-                    onSuccess.accept(get());
-                } catch (InterruptedException ex) {
-                    Thread.currentThread().interrupt();
-                    error(parent, errorMessage, ex);
-                } catch (ExecutionException ex) {
-                    Throwable cause = ex.getCause();
-                    if (cause instanceof IllegalArgumentException illegalArgument) {
-                        info(parent, illegalArgument.getMessage());
-                    } else {
-                        error(parent, errorMessage,
-                                cause instanceof Exception exception ? exception : new RuntimeException(cause));
-                    }
-                } catch (RuntimeException ex) {
-                    error(parent, errorMessage, ex);
-                }
-            }
-        }.execute();
     }
 
     public static void installSearch(JTable table, JTextField searchField) {
+        // Isi tabel difilter secara langsung tanpa mengubah data aslinya.
         TableRowSorter<javax.swing.table.TableModel> sorter = new TableRowSorter<>(table.getModel());
         table.setRowSorter(sorter);
         searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
@@ -172,6 +156,25 @@ public final class UiUtil {
         };
     }
 
+    public static void installComboPlaceholder(JComboBox<?> comboBox, String placeholder) {
+        // Renderer ini menampilkan petunjuk tanpa memasukkan teks placeholder sebagai data pilihan.
+        comboBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                    boolean selected, boolean focused) {
+                Component component = super.getListCellRendererComponent(list, value, index, selected, focused);
+                if (value == null && index == -1) {
+                    setText(placeholder);
+                    if (!selected) {
+                        setForeground(AppTheme.MUTED);
+                    }
+                }
+                return component;
+            }
+        });
+        comboBox.setSelectedIndex(-1);
+    }
+
     private static final class StatusRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean selected,
@@ -191,7 +194,7 @@ public final class UiUtil {
     }
 
     @FunctionalInterface
-    public interface BackgroundTask<T> {
+    public interface Task<T> {
         T run() throws Exception;
     }
 }

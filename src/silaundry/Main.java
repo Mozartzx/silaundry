@@ -5,6 +5,7 @@ import javax.swing.UIManager;
 import silaundry.view.AppTheme;
 import silaundry.view.LoginFrame;
 
+// Titik awal aplikasi yang menyiapkan tampilan Swing lalu membuka halaman login.
 public class Main {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {

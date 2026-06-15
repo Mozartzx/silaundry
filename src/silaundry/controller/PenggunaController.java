@@ -8,21 +8,26 @@ import silaundry.model.Pelanggan;
 import silaundry.util.IdGenerator;
 import silaundry.util.PasswordUtil;
 
+// Mengatur data pelanggan dan karyawan serta validasi ketika akun dibuat atau dihapus.
 public class PenggunaController {
     private final UserDAO userDAO = new UserDAO();
 
+    // Mengambil pelanggan aktif untuk tabel pemilik dan pilihan pesanan karyawan.
     public List<Pelanggan> getAllPelanggan() throws SQLException {
         return userDAO.findAllPelanggan();
     }
 
+    // Mengambil daftar karyawan yang masih tersedia di sistem.
     public List<Karyawan> getAllKaryawan() throws SQLException {
         return userDAO.findAllKaryawan();
     }
 
+    // Mengambil satu ID karyawan bila sistem membutuhkan petugas awal.
     public String getDefaultKaryawanId() throws SQLException {
         return userDAO.findFirstKaryawanId();
     }
 
+    // Membentuk akun pelanggan baru setelah semua data dasar lolos validasi.
     public void tambahPelanggan(String username, String nama, String telepon, String password, String alamat)
             throws SQLException {
         validasiPengguna(username, nama, telepon, password);
@@ -40,6 +45,7 @@ public class PenggunaController {
         userDAO.createPelanggan(pelanggan);
     }
 
+    // Membentuk akun karyawan baru dengan shift Pagi atau Malam.
     public void tambahKaryawan(String username, String nama, String telepon, String password, String shift)
             throws SQLException {
         validasiPengguna(username, nama, telepon, password);
@@ -59,10 +65,12 @@ public class PenggunaController {
         userDAO.createKaryawan(karyawan);
     }
 
+    // Menghapus akun karyawan, sedangkan pesanan lamanya tetap menjadi riwayat.
     public void hapusKaryawan(String idKaryawan) throws SQLException {
         userDAO.deleteKaryawan(idKaryawan);
     }
 
+    // Validasi ini dipakai bersama agar aturan akun pelanggan dan karyawan konsisten.
     private void validasiPengguna(String username, String nama, String telepon, String password) {
         String usernameBersih = username == null ? "" : username.trim();
         String namaBersih = nama == null ? "" : nama.trim();

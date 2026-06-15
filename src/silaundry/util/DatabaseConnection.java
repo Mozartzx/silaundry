@@ -9,6 +9,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
+// Menyiapkan konfigurasi dan koneksi JDBC yang dipakai oleh seluruh DAO.
 public final class DatabaseConnection {
     private static final String CONFIG_PATH = "config/db.properties";
     private static final Properties PROPERTIES = new Properties();
@@ -21,6 +22,7 @@ public final class DatabaseConnection {
     private DatabaseConnection() {
     }
 
+    // Membuka koneksi baru berdasarkan nilai yang ada pada db.properties.
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(
                 PROPERTIES.getProperty("db.url"),
@@ -28,6 +30,7 @@ public final class DatabaseConnection {
                 PROPERTIES.getProperty("db.password"));
     }
 
+    // Memberikan pesan sederhana yang mudah dibaca dari halaman login.
     public static String testConnection() {
         try (Connection connection = getConnection()) {
             return connection.isValid(2) ? "Koneksi database berhasil." : "Koneksi database tidak valid.";
@@ -36,6 +39,7 @@ public final class DatabaseConnection {
         }
     }
 
+    // Konfigurasi file diprioritaskan, lalu nilai lokal dipakai sebagai cadangan.
     private static void loadProperties() {
         try (InputStream input = openConfig()) {
             PROPERTIES.load(input);
@@ -47,6 +51,7 @@ public final class DatabaseConnection {
         }
     }
 
+    // Mencari konfigurasi dari folder project atau resource hasil build.
     private static InputStream openConfig() throws IOException {
         File file = new File(CONFIG_PATH);
         if (file.isFile()) {
@@ -59,6 +64,7 @@ public final class DatabaseConnection {
         throw new IOException("File konfigurasi database tidak ditemukan.");
     }
 
+    // Memastikan class driver MySQL tersedia sebelum query dijalankan.
     private static void loadDriver() {
         String driver = PROPERTIES.getProperty("db.driver", "com.mysql.cj.jdbc.Driver");
         try {

@@ -2,6 +2,7 @@ package silaundry.model;
 
 import silaundry.model.enums.Role;
 
+// Representasi satu akun pemilik yang mempunyai akses pengelolaan usaha.
 public class Pemilik extends Pengguna {
     private String idPemilik;
 

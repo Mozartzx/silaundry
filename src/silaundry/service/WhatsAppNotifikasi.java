@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import silaundry.model.INotifiable;
 import silaundry.model.Notifikasi;
 
+// Membuat link template WhatsApp tanpa memakai API atau mengirim pesan otomatis.
 public class WhatsAppNotifikasi implements INotifiable {
     private String nomorTujuan;
     private String linkWhatsApp;

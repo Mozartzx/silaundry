@@ -4,11 +4,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+// Mengubah password menjadi hash SHA-256 sebelum dibandingkan atau disimpan.
 public final class PasswordUtil {
     private PasswordUtil() {
     }
 
     public static String hash(String plainText) {
+        // Hasil byte SHA-256 diubah menjadi teks heksadesimal agar mudah disimpan di database.
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] bytes = digest.digest(plainText.getBytes(StandardCharsets.UTF_8));
@@ -23,6 +25,7 @@ public final class PasswordUtil {
     }
 
     public static boolean matches(String plainText, String hashed) {
+        // Password input tidak dibandingkan langsung, tetapi dibandingkan hasil hash-nya.
         return hash(plainText).equalsIgnoreCase(hashed);
     }
 }

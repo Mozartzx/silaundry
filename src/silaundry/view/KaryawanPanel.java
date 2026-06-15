@@ -14,21 +14,20 @@ import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
-import silaundry.controller.ItemController;
-import silaundry.controller.NotifikasiController;
-import silaundry.controller.PembayaranController;
+import silaundry.controller.LaundryController;
 import silaundry.controller.PenggunaController;
-import silaundry.controller.PesananController;
-import silaundry.controller.TarifController;
 import silaundry.model.ItemPakaian;
 import silaundry.model.Karyawan;
 import silaundry.model.Pelanggan;
 import silaundry.model.Pembayaran;
 import silaundry.model.Pesanan;
+import silaundry.model.RiwayatPembayaran;
 import silaundry.model.TarifLaundry;
 import silaundry.model.enums.KategoriWarna;
+import silaundry.model.enums.StatusPembayaran;
 import silaundry.model.enums.StatusPesanan;
 
+// Menampilkan pekerjaan karyawan untuk pesanan, item pakaian, dan pembayaran.
 public class KaryawanPanel extends JPanel {
     public enum Page {
         PESANAN, ITEM_PAKAIAN, PEMBAYARAN
@@ -36,12 +35,8 @@ public class KaryawanPanel extends JPanel {
 
     private final Karyawan karyawan;
     private final Page page;
-    private final PesananController pesananController = new PesananController();
+    private final LaundryController laundryController = new LaundryController();
     private final PenggunaController penggunaController = new PenggunaController();
-    private final ItemController itemController = new ItemController();
-    private final PembayaranController pembayaranController = new PembayaranController();
-    private final TarifController tarifController = new TarifController();
-    private final NotifikasiController notifikasiController = new NotifikasiController();
 
     private final DefaultTableModel orderModel = UiUtil.model("ID", "Pelanggan", "Tanggal", "Estimasi", "Paket",
             "Berat", "Harga/kg", "Status", "Total", "Catatan");
@@ -66,6 +61,9 @@ public class KaryawanPanel extends JPanel {
 
     private final JComboBox<Pesanan> paymentOrderCombo = new JComboBox<>();
     private final JComboBox<String> paymentMethodCombo = new JComboBox<>(new String[] { "Tunai", "QRIS", "Transfer" });
+    private final DefaultTableModel paymentModel = UiUtil.model("Pesanan", "Pelanggan", "Tanggal Pesanan",
+            "Total Tagihan", "Metode", "Jumlah Bayar", "Status", "Tanggal Bayar");
+    private final JTable paymentTable = new JTable(paymentModel);
     private final JLabel paymentTotalLabel = AppTheme.muted("-");
     private final JLabel paymentStatusLabel = AppTheme.muted("Pilih pesanan");
     private final JButton paymentSaveButton = AppTheme.primaryButton("Catat Pembayaran Lunas");
@@ -74,7 +72,7 @@ public class KaryawanPanel extends JPanel {
     public KaryawanPanel(Karyawan karyawan, Page page) {
         this.karyawan = karyawan;
         this.page = page;
-        statusCombo.setSelectedIndex(-1);
+        installComboPlaceholders();
         paymentSaveButton.setEnabled(false);
         setLayout(new BorderLayout());
         setBackground(AppTheme.BACKGROUND);
@@ -100,6 +98,7 @@ public class KaryawanPanel extends JPanel {
     }
 
     public void refreshData() {
+        // Setiap halaman hanya memuat data yang memang dipakai pada menu tersebut.
         switch (page) {
             case PESANAN -> {
                 refreshCustomers();
@@ -107,10 +106,11 @@ public class KaryawanPanel extends JPanel {
                 refreshOrders();
             }
             case ITEM_PAKAIAN -> refreshOrderChoices(itemOrderCombo, this::refreshItems);
-            case PEMBAYARAN -> refreshOrderChoices(paymentOrderCombo, this::loadPaymentDetails);
+            case PEMBAYARAN -> refreshPaymentData();
         }
     }
 
+    // Tiga method build berikut menyusun halaman sesuai menu pada sidebar karyawan.
     private JPanel buildOrderPanel() {
         JPanel panel = AppTheme.page(new BorderLayout(10, 10));
         UiUtil.applyTableStyle(orderTable);
@@ -201,11 +201,13 @@ public class KaryawanPanel extends JPanel {
 
     private JPanel buildPaymentPanel() {
         JPanel pagePanel = AppTheme.page(new BorderLayout(0, 12));
+        UiUtil.applyTableStyle(paymentTable);
         JPanel panel = AppTheme.surface(new BorderLayout(0, 12));
         JPanel title = new JPanel(new BorderLayout(0, 4));
         title.setBackground(AppTheme.SURFACE);
         title.add(AppTheme.sectionTitle("Pembayaran"), BorderLayout.NORTH);
-        title.add(AppTheme.muted("Pembayaran dicatat satu kali sesuai total tagihan pesanan."), BorderLayout.CENTER);
+        title.add(AppTheme.muted("Pilih tagihan yang belum lunas. Riwayat terbaru ditampilkan di bawah."),
+                BorderLayout.CENTER);
 
         JPanel fields = AppTheme.formGrid();
         AppTheme.addWideField(fields, 0, "Pesanan", paymentOrderCombo);
@@ -224,7 +226,18 @@ public class KaryawanPanel extends JPanel {
         panel.add(fields, BorderLayout.CENTER);
         panel.add(actions, BorderLayout.SOUTH);
         pagePanel.add(panel, BorderLayout.NORTH);
+        pagePanel.add(AppTheme.scroll(paymentTable), BorderLayout.CENTER);
         return pagePanel;
+    }
+
+    private void installComboPlaceholders() {
+        UiUtil.installComboPlaceholder(pelangganCombo, "Pilih pelanggan");
+        UiUtil.installComboPlaceholder(statusCombo, "Pilih status berikutnya");
+        UiUtil.installComboPlaceholder(tarifCombo, "Pilih paket laundry");
+        UiUtil.installComboPlaceholder(itemOrderCombo, "Pilih pesanan");
+        UiUtil.installComboPlaceholder(warnaCombo, "Pilih kategori warna");
+        UiUtil.installComboPlaceholder(paymentOrderCombo, "Pilih pesanan belum bayar");
+        UiUtil.installComboPlaceholder(paymentMethodCombo, "Pilih metode pembayaran");
     }
 
     private void styleInputs() {
@@ -244,23 +257,26 @@ public class KaryawanPanel extends JPanel {
         AppTheme.styleComboBox(paymentMethodCombo);
     }
 
+    // Method refresh membaca ulang data setelah ada perubahan dari pengguna.
     private void refreshCustomers() {
-        UiUtil.runAsync(this, penggunaController::getAllPelanggan, rows -> {
+        UiUtil.runTask(this, penggunaController::getAllPelanggan, rows -> {
             pelangganCombo.removeAllItems();
             rows.forEach(pelangganCombo::addItem);
+            pelangganCombo.setSelectedIndex(-1);
         }, "Gagal memuat pelanggan.");
     }
 
     private void refreshTarif() {
-        UiUtil.runAsync(this, tarifController::getTarifAktif, rows -> {
+        UiUtil.runTask(this, laundryController::getTarifAktif, rows -> {
             tarifCombo.removeAllItems();
             rows.forEach(tarifCombo::addItem);
+            tarifCombo.setSelectedIndex(-1);
             updateTotalPreview();
         }, "Gagal memuat tarif laundry.");
     }
 
     private void refreshOrders() {
-        UiUtil.runAsync(this, pesananController::getAllPesanan, rows -> {
+        UiUtil.runTask(this, laundryController::getAllPesanan, rows -> {
             orderModel.setRowCount(0);
             statusCombo.setSelectedIndex(-1);
             for (Pesanan pesanan : rows) {
@@ -279,20 +295,71 @@ public class KaryawanPanel extends JPanel {
 
     private void refreshOrderChoices(JComboBox<Pesanan> combo, Runnable afterRefresh) {
         String selectedId = selectedOrderId(combo);
-        UiUtil.runAsync(this, pesananController::getAllPesanan, rows -> {
+        UiUtil.runTask(this, laundryController::getAllPesanan, rows -> {
             updatingOrderChoices = true;
             combo.removeAllItems();
+            boolean selectionRestored = false;
             for (Pesanan pesanan : rows) {
                 if (pesanan.getStatusPesanan() != StatusPesanan.DIBATALKAN) {
                     combo.addItem(pesanan);
                     if (pesanan.getIdPesanan().equals(selectedId)) {
                         combo.setSelectedItem(pesanan);
+                        selectionRestored = true;
                     }
                 }
+            }
+            if (!selectionRestored) {
+                combo.setSelectedIndex(-1);
             }
             updatingOrderChoices = false;
             afterRefresh.run();
         }, "Gagal memuat pilihan pesanan.");
+    }
+
+    private void refreshPaymentData() {
+        // Riwayat dan pilihan tagihan dimuat bersamaan agar tampilan selalu konsisten setelah pembayaran.
+        refreshPaymentHistory();
+        refreshUnpaidOrderChoices();
+    }
+
+    private void refreshPaymentHistory() {
+        UiUtil.runTask(this, laundryController::getRiwayatPembayaran, rows -> {
+            paymentModel.setRowCount(0);
+            for (RiwayatPembayaran payment : rows) {
+                paymentModel.addRow(new Object[] {
+                        payment.getIdPesanan(),
+                        payment.getNamaPelanggan(),
+                        payment.getTanggalPesanan(),
+                        UiUtil.money(payment.getTotalTagihan()),
+                        payment.getMetode() == null ? "-" : payment.getMetode(),
+                        payment.getJumlahBayar() == 0 ? "-" : UiUtil.money(payment.getJumlahBayar()),
+                        payment.getStatus().getDisplayName(),
+                        payment.getTanggalBayar() == null ? "-" : payment.getTanggalBayar()
+                });
+            }
+        }, "Gagal memuat riwayat pembayaran.");
+    }
+
+    private void refreshUnpaidOrderChoices() {
+        String selectedId = selectedOrderId(paymentOrderCombo);
+        UiUtil.runTask(this, laundryController::getPesananBelumBayar, rows -> {
+            // Dropdown sengaja hanya berisi pesanan belum lunas agar karyawan tidak salah memilih.
+            updatingOrderChoices = true;
+            paymentOrderCombo.removeAllItems();
+            boolean selectionRestored = false;
+            for (Pesanan pesanan : rows) {
+                paymentOrderCombo.addItem(pesanan);
+                if (pesanan.getIdPesanan().equals(selectedId)) {
+                    paymentOrderCombo.setSelectedItem(pesanan);
+                    selectionRestored = true;
+                }
+            }
+            if (!selectionRestored) {
+                paymentOrderCombo.setSelectedIndex(-1);
+            }
+            updatingOrderChoices = false;
+            loadPaymentDetails();
+        }, "Gagal memuat pesanan yang belum dibayar.");
     }
 
     private void refreshItems() {
@@ -301,7 +368,7 @@ public class KaryawanPanel extends JPanel {
         if (pesanan == null) {
             return;
         }
-        UiUtil.runAsync(this, () -> itemController.getItemsByPesanan(pesanan.getIdPesanan()), rows -> {
+        UiUtil.runTask(this, () -> laundryController.getItemsByPesanan(pesanan.getIdPesanan()), rows -> {
             itemModel.setRowCount(0);
             for (ItemPakaian item : rows) {
                 itemModel.addRow(new Object[] { item.getIdItem(), item.getIdPesanan(), item.getJenisPakaian(),
@@ -311,6 +378,7 @@ public class KaryawanPanel extends JPanel {
         }, "Gagal memuat item pakaian.");
     }
 
+    // Method aksi di bawah dijalankan ketika tombol pada halaman ditekan.
     private void createOrder() {
         Pelanggan pelanggan = (Pelanggan) pelangganCombo.getSelectedItem();
         TarifLaundry tarif = (TarifLaundry) tarifCombo.getSelectedItem();
@@ -319,7 +387,7 @@ public class KaryawanPanel extends JPanel {
             return;
         }
         double beratKg = ((Number) beratSpinner.getValue()).doubleValue();
-        UiUtil.runAsync(this, () -> pesananController.tambahPesanan(pelanggan.getIdPelanggan(),
+        UiUtil.runTask(this, () -> laundryController.tambahPesanan(pelanggan.getIdPelanggan(),
                 karyawan.getIdKaryawan(), tarif.getPaketLaundry(), beratKg, catatanField.getText().trim()), created -> {
             catatanField.setText("");
             refreshOrders();
@@ -336,7 +404,7 @@ public class KaryawanPanel extends JPanel {
         if (idPesanan == null) {
             return;
         }
-        UiUtil.runAsync(this, () -> pesananController.getPesanan(idPesanan), pesanan -> {
+        UiUtil.runTask(this, () -> laundryController.getPesanan(idPesanan), pesanan -> {
             if (pesanan == null) {
                 return;
             }
@@ -361,7 +429,7 @@ public class KaryawanPanel extends JPanel {
             UiUtil.info(this, "Pilih status berikutnya.");
             return;
         }
-        UiUtil.runAsync(this, () -> pesananController.updateStatus(idPesanan, status), changed -> {
+        UiUtil.runTask(this, () -> laundryController.updateStatus(idPesanan, status), changed -> {
             refreshOrders();
             UiUtil.info(this, changed ? "Status pesanan berhasil diperbarui." : "Status pesanan tidak berubah.");
         }, "Gagal memperbarui status pesanan.");
@@ -372,7 +440,7 @@ public class KaryawanPanel extends JPanel {
         if (idPesanan == null || !UiUtil.confirm(this, "Batalkan pesanan " + idPesanan + "?")) {
             return;
         }
-        UiUtil.runAsync(this, () -> pesananController.batalkanPesanan(idPesanan), changed -> {
+        UiUtil.runTask(this, () -> laundryController.batalkanPesanan(idPesanan), changed -> {
             refreshOrders();
             UiUtil.info(this, changed ? "Pesanan berhasil dibatalkan." : "Status pesanan tidak berubah.");
         }, "Gagal membatalkan pesanan.");
@@ -384,7 +452,7 @@ public class KaryawanPanel extends JPanel {
             UiUtil.info(this, "Pilih pesanan terlebih dahulu.");
             return;
         }
-        UiUtil.runAsync(this, () -> notifikasiController.buatLinkWhatsApp(idPesanan), link -> {
+        UiUtil.runTask(this, () -> laundryController.buatLinkWhatsApp(idPesanan), link -> {
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(link), null);
             UiUtil.info(this, "Link WhatsApp disalin ke clipboard:\n\n" + link);
         }, "Gagal membuat template WhatsApp.");
@@ -400,8 +468,12 @@ public class KaryawanPanel extends JPanel {
         String kondisi = kondisiField.getText().trim();
         String deskripsi = deskripsiField.getText().trim();
         KategoriWarna warna = (KategoriWarna) warnaCombo.getSelectedItem();
-        UiUtil.runAsync(this, () -> {
-            itemController.tambahItem(pesanan.getIdPesanan(), jenis, warna, kondisi, deskripsi);
+        if (warna == null) {
+            UiUtil.info(this, "Pilih kategori warna terlebih dahulu.");
+            return;
+        }
+        UiUtil.runTask(this, () -> {
+            laundryController.tambahItem(pesanan.getIdPesanan(), jenis, warna, kondisi, deskripsi);
             return null;
         }, ignored -> {
             jenisField.setText("");
@@ -418,7 +490,7 @@ public class KaryawanPanel extends JPanel {
             UiUtil.info(this, "Pilih pesanan terlebih dahulu.");
             return;
         }
-        UiUtil.runAsync(this, () -> itemController.jalankanSmartGrouping(pesanan.getIdPesanan()), count -> {
+        UiUtil.runTask(this, () -> laundryController.jalankanSmartGrouping(pesanan.getIdPesanan()), count -> {
             refreshItems();
             UiUtil.info(this, count + " item berhasil dikelompokkan berdasarkan warna.");
         }, "Gagal menjalankan smart grouping.");
@@ -429,8 +501,8 @@ public class KaryawanPanel extends JPanel {
         if (idItem == null || !UiUtil.confirm(this, "Hapus item " + idItem + "?")) {
             return;
         }
-        UiUtil.runAsync(this, () -> {
-            itemController.hapusItem(idItem);
+        UiUtil.runTask(this, () -> {
+            laundryController.hapusItem(idItem);
             return null;
         }, ignored -> refreshItems(), "Gagal menghapus item.");
     }
@@ -445,9 +517,10 @@ public class KaryawanPanel extends JPanel {
         }
         paymentTotalLabel.setText(UiUtil.money(pesanan.getTotalBiaya()));
         paymentSaveButton.setEnabled(false);
-        UiUtil.runAsync(this, () -> pembayaranController.getPembayaran(pesanan.getIdPesanan()), payment -> {
-            paymentStatusLabel.setText(payment == null ? "Belum dibayar" : "Lunas melalui " + payment.getMetode());
-            paymentSaveButton.setEnabled(payment == null);
+        UiUtil.runTask(this, () -> laundryController.getPembayaran(pesanan.getIdPesanan()), payment -> {
+            boolean belumLunas = payment == null || payment.getStatus() == StatusPembayaran.BELUM_BAYAR;
+            paymentStatusLabel.setText(belumLunas ? "Belum dibayar" : "Lunas melalui " + payment.getMetode());
+            paymentSaveButton.setEnabled(belumLunas);
         }, "Gagal membaca pembayaran.");
     }
 
@@ -457,12 +530,18 @@ public class KaryawanPanel extends JPanel {
             UiUtil.info(this, "Pilih pesanan terlebih dahulu.");
             return;
         }
-        String metode = paymentMethodCombo.getSelectedItem().toString();
+        String metode = (String) paymentMethodCombo.getSelectedItem();
+        if (metode == null) {
+            UiUtil.info(this, "Pilih metode pembayaran terlebih dahulu.");
+            return;
+        }
         if (!UiUtil.confirm(this, "Catat pembayaran lunas sebesar " + UiUtil.money(pesanan.getTotalBiaya()) + "?")) {
             return;
         }
-        UiUtil.runAsync(this, () -> pembayaranController.catatPembayaran(pesanan.getIdPesanan(), metode), payment -> {
-            loadPaymentDetails();
+        UiUtil.runTask(this, () -> laundryController.catatPembayaran(pesanan.getIdPesanan(), metode), payment -> {
+            // Setelah dibayar, pesanan otomatis hilang dari dropdown dan masuk ke riwayat lunas.
+            refreshPaymentData();
+            paymentMethodCombo.setSelectedIndex(-1);
             UiUtil.info(this, "Pembayaran lunas berhasil dicatat.");
         }, "Gagal mencatat pembayaran.");
     }

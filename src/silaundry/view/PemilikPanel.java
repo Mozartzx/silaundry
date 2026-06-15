@@ -14,10 +14,9 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
-import silaundry.controller.DashboardController;
+import silaundry.controller.LaundryController;
+import silaundry.controller.PemilikController;
 import silaundry.controller.PenggunaController;
-import silaundry.controller.PesananController;
-import silaundry.controller.TarifController;
 import silaundry.model.DataDasbor;
 import silaundry.model.Karyawan;
 import silaundry.model.LaporanKeuangan;
@@ -26,16 +25,16 @@ import silaundry.model.Pesanan;
 import silaundry.model.TarifLaundry;
 import silaundry.model.enums.StatusPesanan;
 
+// Menampilkan dashboard serta menu pengelolaan yang hanya dapat dipakai pemilik.
 public class PemilikPanel extends JPanel {
     public enum Page {
         DASHBOARD, PESANAN, PELANGGAN, KARYAWAN, TARIF
     }
 
     private final Page page;
-    private final DashboardController dashboardController = new DashboardController();
+    private final PemilikController pemilikController = new PemilikController();
     private final PenggunaController penggunaController = new PenggunaController();
-    private final PesananController pesananController = new PesananController();
-    private final TarifController tarifController = new TarifController();
+    private final LaundryController laundryController = new LaundryController();
 
     private final JLabel aktifLabel = new JLabel("-");
     private final JLabel nilaiAktifLabel = new JLabel("-");
@@ -78,6 +77,8 @@ public class PemilikPanel extends JPanel {
         setBackground(AppTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         styleInputs();
+        UiUtil.installComboPlaceholder(shiftCombo, "Pilih shift kerja");
+        UiUtil.installComboPlaceholder(tarifCombo, "Pilih paket laundry");
         tarifCombo.addActionListener(event -> tarifSelected());
         orderFilterCombo.addActionListener(event -> applyOrderFilter());
         add(switch (page) {
@@ -90,6 +91,7 @@ public class PemilikPanel extends JPanel {
     }
 
     public void refreshData() {
+        // Pemilik hanya memuat data sesuai halaman yang sedang terbuka.
         switch (page) {
             case DASHBOARD -> refreshDashboard();
             case PESANAN -> refreshPesanan();
@@ -99,6 +101,7 @@ public class PemilikPanel extends JPanel {
         }
     }
 
+    // Bagian build menyusun isi setiap menu pemilik tanpa mencampur query database.
     private JPanel buildDashboardPanel() {
         JPanel panel = AppTheme.page(new BorderLayout(12, 12));
         JPanel header = AppTheme.surface(new BorderLayout(4, 4));
@@ -172,7 +175,7 @@ public class PemilikPanel extends JPanel {
 
         JButton addButton = AppTheme.primaryButton("Tambah Karyawan");
         addButton.addActionListener(event -> addKaryawan());
-        JButton deleteButton = AppTheme.dangerButton("Nonaktifkan");
+        JButton deleteButton = AppTheme.dangerButton("Hapus Karyawan");
         deleteButton.addActionListener(event -> deleteKaryawan());
         JButton refreshButton = AppTheme.secondaryButton("Refresh");
         refreshButton.addActionListener(event -> refreshData());
@@ -266,9 +269,10 @@ public class PemilikPanel extends JPanel {
         AppTheme.styleTextField(hargaTarifField);
     }
 
+    // Bagian refresh mengambil ulang data supaya tabel dan ringkasan selalu terbaru.
     private void refreshDashboard() {
-        UiUtil.runAsync(this,
-                () -> new DashboardData(dashboardController.getDataDasbor(), dashboardController.getLaporanBulanIni()),
+        UiUtil.runTask(this,
+                () -> new DashboardData(pemilikController.getDataDasbor(), pemilikController.getLaporanBulanIni()),
                 result -> {
             DataDasbor data = result.dataDasbor();
             LaporanKeuangan laporan = result.laporan();
@@ -282,7 +286,7 @@ public class PemilikPanel extends JPanel {
     }
 
     private void refreshPesanan() {
-        UiUtil.runAsync(this, pesananController::getAllPesanan, rows -> {
+        UiUtil.runTask(this, laundryController::getAllPesanan, rows -> {
             orderCache = rows;
             applyOrderFilter();
         }, "Gagal memuat data pesanan.");
@@ -320,7 +324,7 @@ public class PemilikPanel extends JPanel {
     }
 
     private void refreshKaryawan() {
-        UiUtil.runAsync(this, penggunaController::getAllKaryawan, rows -> {
+        UiUtil.runTask(this, penggunaController::getAllKaryawan, rows -> {
             karyawanModel.setRowCount(0);
             for (Karyawan karyawan : rows) {
                 karyawanModel.addRow(new Object[] { karyawan.getIdKaryawan(), karyawan.getUsername(),
@@ -330,7 +334,7 @@ public class PemilikPanel extends JPanel {
     }
 
     private void refreshPelanggan() {
-        UiUtil.runAsync(this, penggunaController::getAllPelanggan, rows -> {
+        UiUtil.runTask(this, penggunaController::getAllPelanggan, rows -> {
             pelangganModel.setRowCount(0);
             for (Pelanggan pelanggan : rows) {
                 pelangganModel.addRow(new Object[] { pelanggan.getIdPelanggan(), pelanggan.getUsername(),
@@ -341,7 +345,7 @@ public class PemilikPanel extends JPanel {
     }
 
     private void refreshTarif() {
-        UiUtil.runAsync(this, tarifController::getSemuaTarif, rows -> {
+        UiUtil.runTask(this, pemilikController::getSemuaTarif, rows -> {
             tarifModel.setRowCount(0);
             tarifCombo.removeAllItems();
             for (TarifLaundry tarif : rows) {
@@ -350,22 +354,29 @@ public class PemilikPanel extends JPanel {
                         tarif.isAktif() ? "Aktif" : "Nonaktif" });
                 tarifCombo.addItem(tarif);
             }
+            tarifCombo.setSelectedIndex(-1);
             tarifSelected();
         }, "Gagal memuat tarif laundry.");
     }
 
+    // Bagian aksi menangani input tombol setelah validasi pada controller.
     private void addKaryawan() {
         String password = new String(passwordField.getPassword());
-        UiUtil.runAsync(this, () -> {
+        String shift = (String) shiftCombo.getSelectedItem();
+        if (shift == null) {
+            UiUtil.info(this, "Pilih shift kerja karyawan terlebih dahulu.");
+            return;
+        }
+        UiUtil.runTask(this, () -> {
             penggunaController.tambahKaryawan(usernameField.getText().trim(), namaField.getText().trim(),
-                    teleponField.getText().trim(), password, shiftCombo.getSelectedItem().toString());
+                    teleponField.getText().trim(), password, shift);
             return null;
         }, ignored -> {
             usernameField.setText("");
             namaField.setText("");
             teleponField.setText("");
             passwordField.setText("");
-            shiftCombo.setSelectedItem("Pagi");
+            shiftCombo.setSelectedIndex(-1);
             refreshKaryawan();
             UiUtil.info(this, "Akun karyawan berhasil dibuat.");
         }, "Gagal menambah karyawan.");
@@ -373,19 +384,26 @@ public class PemilikPanel extends JPanel {
 
     private void deleteKaryawan() {
         String idKaryawan = UiUtil.selectedId(karyawanTable);
-        if (idKaryawan == null || !UiUtil.confirm(this, "Nonaktifkan akun karyawan " + idKaryawan + "?")) {
+        if (idKaryawan == null
+                || !UiUtil.confirm(this, "Hapus akun karyawan " + idKaryawan
+                        + " secara permanen? Riwayat pesanan tetap tersimpan.")) {
             return;
         }
-        UiUtil.runAsync(this, () -> {
+        UiUtil.runTask(this, () -> {
             penggunaController.hapusKaryawan(idKaryawan);
             return null;
-        }, ignored -> refreshKaryawan(), "Gagal menonaktifkan karyawan.");
+        }, ignored -> {
+            refreshKaryawan();
+            UiUtil.info(this, "Akun karyawan berhasil dihapus.");
+        }, "Gagal menghapus karyawan.");
     }
 
     private void tarifSelected() {
         TarifLaundry tarif = (TarifLaundry) tarifCombo.getSelectedItem();
         if (tarif != null) {
             hargaTarifField.setText(String.valueOf(Math.round(tarif.getHargaPerKg())));
+        } else {
+            hargaTarifField.setText("");
         }
     }
 
@@ -402,8 +420,8 @@ public class PemilikPanel extends JPanel {
             UiUtil.info(this, "Harga per kilo harus berupa angka.");
             return;
         }
-        UiUtil.runAsync(this, () -> {
-            tarifController.updateHarga(tarif.getPaketLaundry(), harga);
+        UiUtil.runTask(this, () -> {
+            pemilikController.updateHarga(tarif.getPaketLaundry(), harga);
             return null;
         }, ignored -> {
             refreshTarif();

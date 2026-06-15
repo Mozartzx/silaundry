@@ -1,5 +1,6 @@
 package silaundry.model.enums;
 
+// Pilihan paket layanan yang menentukan harga dan estimasi pengerjaan laundry.
 public enum PaketLaundry {
     STANDARD_2_HARI("Standard 2 Hari", 2),
     EXPRESS_1_HARI("Express 1 Hari", 1);

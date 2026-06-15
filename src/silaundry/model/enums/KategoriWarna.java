@@ -1,5 +1,6 @@
 package silaundry.model.enums;
 
+// Pilihan kategori warna yang dipakai sebagai dasar smart grouping pakaian.
 public enum KategoriWarna {
     PUTIH("Putih", "Grup Putih"),
     TERANG("Terang", "Grup Warna Terang"),

@@ -2,6 +2,7 @@ package silaundry.model;
 
 import silaundry.model.enums.StatusPembayaran;
 
+// Menyimpan hasil pembayaran sebuah pesanan beserta metode dan status pelunasannya.
 public class Pembayaran {
     private String idPembayaran;
     private String idPesanan;
@@ -18,6 +19,7 @@ public class Pembayaran {
     }
 
     public void prosesPembayaran() {
+        // Nominal positif dianggap sebagai pembayaran yang sudah lunas.
         status = jumlah > 0 ? StatusPembayaran.LUNAS : StatusPembayaran.BELUM_BAYAR;
     }
 

@@ -1,5 +1,6 @@
 package silaundry.model;
 
+// Menampung angka ringkasan yang ditampilkan pada dashboard pemilik.
 public class DataDasbor {
     private String idDasbor;
     private int totalPesananAktif;

@@ -14,7 +14,9 @@ import silaundry.model.Pengguna;
 import silaundry.model.enums.Role;
 import silaundry.util.DatabaseConnection;
 
+// Menangani query login dan pengelolaan data pengguna berdasarkan role masing-masing.
 public class UserDAO {
+    // Login hanya menerima akun aktif dengan username, hash, dan role yang sama.
     public Pengguna authenticate(String username, String passwordHash, Role role) throws SQLException {
         String sql = """
                 SELECT p.*, pl.id_pelanggan, pl.alamat, k.id_karyawan, k.shift_kerja, pm.id_pemilik
@@ -40,6 +42,7 @@ public class UserDAO {
         }
     }
 
+    // Mengambil pelanggan aktif untuk pilihan dan tabel aplikasi.
     public List<Pelanggan> findAllPelanggan() throws SQLException {
         String sql = """
                 SELECT p.*, pl.id_pelanggan, pl.alamat
@@ -66,6 +69,7 @@ public class UserDAO {
         return pelanggan;
     }
 
+    // Mengambil karyawan aktif untuk halaman pengelolaan pemilik.
     public List<Karyawan> findAllKaryawan() throws SQLException {
         String sql = """
                 SELECT p.*, k.id_karyawan, k.shift_kerja
@@ -92,6 +96,7 @@ public class UserDAO {
         return karyawan;
     }
 
+    // Data pengguna dan pelanggan disimpan sebagai satu transaksi agar tidak setengah masuk.
     public void createPelanggan(Pelanggan pelanggan) throws SQLException {
         String insertPengguna = """
                 INSERT INTO pengguna (id_pengguna, username, nama_lengkap, nomor_telepon, kata_sandi, role)
@@ -117,6 +122,7 @@ public class UserDAO {
         }
     }
 
+    // Data pengguna dan karyawan juga disimpan dalam satu transaksi.
     public void createKaryawan(Karyawan karyawan) throws SQLException {
         String insertPengguna = """
                 INSERT INTO pengguna (id_pengguna, username, nama_lengkap, nomor_telepon, kata_sandi, role)
@@ -143,19 +149,24 @@ public class UserDAO {
     }
 
     public void deleteKaryawan(String idKaryawan) throws SQLException {
+        // Akun pengguna dihapus supaya username dapat dipakai lagi. Data pesanan lama tetap ada
+        // karena relasi pesanan ke karyawan memakai ON DELETE SET NULL.
         String sql = """
-                UPDATE pengguna p
+                DELETE p
+                FROM pengguna p
                 JOIN karyawan k ON k.id_pengguna = p.id_pengguna
-                SET p.aktif = FALSE
                 WHERE k.id_karyawan = ?
                 """;
         try (Connection connection = DatabaseConnection.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, idKaryawan);
-            statement.executeUpdate();
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException("Karyawan tidak ditemukan atau sudah dihapus.");
+            }
         }
     }
 
+    // Mengambil ID karyawan pertama sebagai nilai cadangan bila diperlukan.
     public String findFirstKaryawanId() throws SQLException {
         String sql = "SELECT id_karyawan FROM karyawan ORDER BY id_karyawan LIMIT 1";
         try (Connection connection = DatabaseConnection.getConnection();
@@ -165,6 +176,7 @@ public class UserDAO {
         }
     }
 
+    // Helper ini mengisi kolom pengguna yang sama untuk pelanggan dan karyawan.
     private void fillPenggunaStatement(PreparedStatement statement, Pengguna pengguna) throws SQLException {
         statement.setString(1, pengguna.getIdPengguna());
         statement.setString(2, pengguna.getUsername());
@@ -173,6 +185,7 @@ public class UserDAO {
         statement.setString(5, pengguna.getKataSandi());
     }
 
+    // Waktu login diperbarui untuk mencatat aktivitas terakhir pengguna.
     private void updateLastLogin(Connection connection, String idPengguna) {
         String sql = "UPDATE pengguna SET terakhir_login = NOW() WHERE id_pengguna = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -183,6 +196,7 @@ public class UserDAO {
         }
     }
 
+    // Hasil query dibentuk menjadi subclass sesuai role yang tersimpan.
     private Pengguna mapPengguna(ResultSet resultSet) throws SQLException {
         Role role = Role.fromDb(resultSet.getString("role"));
         return switch (role) {

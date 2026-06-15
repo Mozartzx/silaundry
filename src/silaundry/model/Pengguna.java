@@ -2,6 +2,7 @@ package silaundry.model;
 
 import silaundry.model.enums.Role;
 
+// Parent class yang menyimpan data login umum milik semua role pengguna.
 public abstract class Pengguna {
     private String idPengguna;
     private String username;

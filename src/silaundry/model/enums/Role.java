@@ -1,5 +1,6 @@
 package silaundry.model.enums;
 
+// Daftar role yang menentukan menu serta hak akses setelah pengguna login.
 public enum Role {
     PEMILIK("Pemilik"),
     KARYAWAN("Karyawan"),

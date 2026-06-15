@@ -6,6 +6,7 @@ import java.util.List;
 import silaundry.model.enums.PaketLaundry;
 import silaundry.model.enums.StatusPesanan;
 
+// Menjadi pusat data transaksi laundry dari penerimaan sampai pesanan selesai.
 public class Pesanan {
     private String idPesanan;
     private String idPelanggan;
@@ -42,10 +43,12 @@ public class Pesanan {
     }
 
     public void tambahItemPakaian(ItemPakaian item) {
+        // Item dimasukkan ke daftar milik pesanan agar relasi objek tetap terlihat.
         daftarItem.add(item);
     }
 
     public double kalkulasiTotalBiaya() {
+        // Total selalu berasal dari berat dikali harga per kilogram.
         totalBiaya = Math.round(beratKg * hargaPerKg);
         return totalBiaya;
     }

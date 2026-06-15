@@ -11,17 +11,16 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import silaundry.controller.NotifikasiController;
-import silaundry.controller.PesananController;
+import silaundry.controller.LaundryController;
 import silaundry.model.Notifikasi;
 import silaundry.model.Pelanggan;
 import silaundry.model.Pesanan;
 import silaundry.model.enums.StatusPesanan;
 
+// Menampilkan pesanan aktif, riwayat, dan notifikasi milik pelanggan yang login.
 public class PelangganPanel extends JPanel {
     private final Pelanggan pelanggan;
-    private final PesananController pesananController = new PesananController();
-    private final NotifikasiController notifikasiController = new NotifikasiController();
+    private final LaundryController laundryController = new LaundryController();
     private final JLabel summaryLabel = AppTheme.muted("Memuat status laundry...");
     private final DefaultTableModel activeModel = UiUtil.model("ID", "Tanggal", "Estimasi", "Paket", "Berat",
             "Status", "Total", "Catatan");
@@ -46,6 +45,7 @@ public class PelangganPanel extends JPanel {
     }
 
     private JPanel buildHeader() {
+        // Header berisi identitas pelanggan dan tombol aksi yang sering dipakai.
         JPanel header = AppTheme.surface(new BorderLayout(10, 8));
 
         JPanel title = new JPanel(new GridLayout(2, 1, 0, 4));
@@ -91,9 +91,10 @@ public class PelangganPanel extends JPanel {
     }
 
     private void refresh() {
-        UiUtil.runAsync(this, () -> new CustomerData(
-                pesananController.getPesananPelanggan(pelanggan.getIdPelanggan()),
-                notifikasiController.getNotifikasiPelanggan(pelanggan.getIdPelanggan())), data -> {
+        // Pesanan dan notifikasi dimuat bersama agar ringkasan berasal dari data yang sama.
+        UiUtil.runTask(this, () -> new CustomerData(
+                laundryController.getPesananPelanggan(pelanggan.getIdPelanggan()),
+                laundryController.getNotifikasiPelanggan(pelanggan.getIdPelanggan())), data -> {
             activeModel.setRowCount(0);
             historyModel.setRowCount(0);
             notificationModel.setRowCount(0);
@@ -117,16 +118,22 @@ public class PelangganPanel extends JPanel {
                         notifikasi.isSudahDibaca() ? "Sudah dibaca" : "Belum dibaca"
                 });
             }
-            int notificationCount = data.notifikasi().size();
+            // Ringkasan hanya menghitung notifikasi yang memang belum dibaca pelanggan.
+            int unreadNotificationCount = 0;
+            for (Notifikasi notifikasi : data.notifikasi()) {
+                if (!notifikasi.isSudahDibaca()) {
+                    unreadNotificationCount++;
+                }
+            }
             summaryLabel.setText(activeCount + " pesanan berjalan, " + historyCount
-                    + " riwayat pesanan, " + notificationCount + " notifikasi.");
+                    + " riwayat pesanan, " + unreadNotificationCount + " notifikasi belum dibaca.");
             if (activeCount == 0) {
                 activeModel.addRow(new Object[] { "-", "-", "-", "-", "-", "Belum ada pesanan aktif", "-", "-" });
             }
             if (historyCount == 0) {
                 historyModel.addRow(new Object[] { "-", "-", "-", "-", "-", "Belum ada riwayat", "-", "-" });
             }
-            if (notificationCount == 0) {
+            if (data.notifikasi().isEmpty()) {
                 notificationModel.addRow(new Object[] { "-", "-", "Belum ada notifikasi", "-" });
             }
         }, "Gagal memuat status laundry pelanggan.");
@@ -146,13 +153,14 @@ public class PelangganPanel extends JPanel {
     }
 
     private boolean isHistory(Pesanan pesanan) {
+        // Pesanan final dipindahkan dari tabel aktif ke tabel riwayat.
         return pesanan.getStatusPesanan() == StatusPesanan.SELESAI
                 || pesanan.getStatusPesanan() == StatusPesanan.DIBATALKAN;
     }
 
     private void markNotificationsRead() {
-        UiUtil.runAsync(this,
-                () -> notifikasiController.tandaiSemuaDibaca(pelanggan.getIdPelanggan()), changed -> {
+        UiUtil.runTask(this,
+                () -> laundryController.tandaiSemuaDibaca(pelanggan.getIdPelanggan()), changed -> {
             refresh();
             UiUtil.info(this, changed == 0 ? "Tidak ada notifikasi baru." : changed + " notifikasi ditandai dibaca.");
         }, "Gagal memperbarui notifikasi.");

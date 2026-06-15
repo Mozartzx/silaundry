@@ -7,9 +7,11 @@ import silaundry.model.enums.Role;
 import silaundry.util.DatabaseConnection;
 import silaundry.util.PasswordUtil;
 
+// Menghubungkan proses login pada view dengan data akun yang tersimpan di database.
 public class AuthController {
     private final UserDAO userDAO = new UserDAO();
 
+    // Password di-hash dahulu lalu dicocokkan bersama username dan role.
     public Pengguna login(String username, String password, Role role) throws SQLException {
         String passwordHash = PasswordUtil.hash(password);
         Pengguna pengguna = userDAO.authenticate(username, passwordHash, role);
@@ -19,6 +21,7 @@ public class AuthController {
         return pengguna;
     }
 
+    // Dipakai tombol Test DB untuk memastikan konfigurasi MySQL dapat digunakan.
     public String testConnection() {
         return DatabaseConnection.testConnection();
     }

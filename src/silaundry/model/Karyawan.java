@@ -2,6 +2,7 @@ package silaundry.model;
 
 import silaundry.model.enums.Role;
 
+// Representasi pengguna karyawan beserta ID kerja dan shift yang dijalankan.
 public class Karyawan extends Pengguna {
     private String idKaryawan;
     private String shiftKerja;

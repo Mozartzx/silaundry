@@ -294,6 +294,17 @@ class Pembayaran {
   +prosesPembayaran() void
 }
 
+class RiwayatPembayaran {
+  -String idPesanan
+  -String namaPelanggan
+  -LocalDate tanggalPesanan
+  -double totalTagihan
+  -String metode
+  -double jumlahBayar
+  -StatusPembayaran status
+  -LocalDateTime tanggalBayar
+}
+
 class INotifiable {
   <<interface>>
   +kirimNotifikasi(notifikasi: Notifikasi) void
@@ -339,7 +350,7 @@ class LaporanKeuangan {
 }
 
 class SmartGroupingService {
-  -ItemPakaianDAO itemPakaianDAO
+  -LaundryDAO laundryDAO
   +labelFor(kategoriWarna: KategoriWarna) String
   +kelompokkanItem(pesanan: Pesanan) void
   +kelompokkanItem(idPesanan: String) int
@@ -361,60 +372,41 @@ class PenggunaController {
   +hapusKaryawan(idKaryawan: String) void
 }
 
-class PesananController {
-  -PesananDAO pesananDAO
-  -TarifLaundryDAO tarifLaundryDAO
-  -ItemPakaianDAO itemPakaianDAO
-  -PembayaranDAO pembayaranDAO
-  -NotifikasiController notifikasiController
+class LaundryController {
+  -LaundryDAO laundryDAO
+  -TarifDAO tarifDAO
+  -SmartGroupingService smartGroupingService
+  -AppNotifikasi appNotifikasi
   +getAllPesanan() List~Pesanan~
   +getPesananPelanggan(idPelanggan: String) List~Pesanan~
   +getPesanan(idPesanan: String) Pesanan
+  +getTarifAktif() List~TarifLaundry~
   +tambahPesanan(idPelanggan: String, idKaryawan: String, paketLaundry: PaketLaundry, beratKg: double, catatan: String) Pesanan
   +updateStatus(idPesanan: String, statusPesanan: StatusPesanan) boolean
   +batalkanPesanan(idPesanan: String) boolean
-}
-
-class ItemController {
-  -ItemPakaianDAO itemPakaianDAO
-  -PesananDAO pesananDAO
-  -SmartGroupingService smartGroupingService
   +getAllItems() List~ItemPakaian~
   +getItemsByPesanan(idPesanan: String) List~ItemPakaian~
   +tambahItem(idPesanan: String, jenis: String, warna: KategoriWarna, kondisi: String, deskripsi: String) void
   +jalankanSmartGrouping(idPesanan: String) int
   +hapusItem(idItem: String) void
-}
-
-class TarifController {
-  -TarifLaundryDAO tarifLaundryDAO
-  +getSemuaTarif() List~TarifLaundry~
-  +getTarifAktif() List~TarifLaundry~
-  +getTarif(paketLaundry: PaketLaundry) TarifLaundry
-  +updateHarga(paketLaundry: PaketLaundry, hargaPerKg: double) void
-}
-
-class PembayaranController {
-  -PembayaranDAO pembayaranDAO
-  -PesananDAO pesananDAO
   +getPembayaran(idPesanan: String) Pembayaran
+  +getPesananBelumBayar() List~Pesanan~
+  +getRiwayatPembayaran() List~RiwayatPembayaran~
   +catatPembayaran(idPesanan: String, metode: String) Pembayaran
-}
-
-class NotifikasiController {
-  -NotifikasiDAO notifikasiDAO
-  -PesananDAO pesananDAO
-  -AppNotifikasi appNotifikasi
   +getNotifikasiPelanggan(idPelanggan: String) List~Notifikasi~
   +tandaiSemuaDibaca(idPelanggan: String) int
   +kirimNotifikasiStatus(pesanan: Pesanan) void
   +buatLinkWhatsApp(idPesanan: String) String
 }
 
-class DashboardController {
+class PemilikController {
   -DashboardDAO dashboardDAO
+  -TarifDAO tarifDAO
   +getDataDasbor() DataDasbor
   +getLaporanBulanIni() LaporanKeuangan
+  +getSemuaTarif() List~TarifLaundry~
+  +getTarif(paketLaundry: PaketLaundry) TarifLaundry
+  +updateHarga(paketLaundry: PaketLaundry, hargaPerKg: double) void
 }
 
 class UserDAO {
@@ -427,49 +419,37 @@ class UserDAO {
   +deleteKaryawan(idKaryawan: String) void
 }
 
-class PesananDAO {
+class LaundryDAO {
   <<DAO>>
-  +findAll() List~Pesanan~
-  +findByPelanggan(idPelanggan: String) List~Pesanan~
-  +findById(idPesanan: String) Pesanan
-  +create(pesanan: Pesanan) void
-  +updateStatus(idPesanan: String, status: StatusPesanan) void
+  +findAllPesanan() List~Pesanan~
+  +findPesananByPelanggan(idPelanggan: String) List~Pesanan~
+  +findPesananById(idPesanan: String) Pesanan
+  +createPesanan(pesanan: Pesanan) void
   +updateStatusDanNotifikasi(idPesanan: String, statusLama: StatusPesanan, statusBaru: StatusPesanan, notifikasi: Notifikasi) void
-}
-
-class ItemPakaianDAO {
-  <<DAO>>
-  +findByPesanan(idPesanan: String) List~ItemPakaian~
-  +findById(idItem: String) ItemPakaian
-  +countByPesanan(idPesanan: String) int
-  +create(item: ItemPakaian) void
+  +findItemsByPesanan(idPesanan: String) List~ItemPakaian~
+  +findItemById(idItem: String) ItemPakaian
+  +countItemsByPesanan(idPesanan: String) int
+  +createItem(item: ItemPakaian) void
   +updateSmartGroups(items: List~ItemPakaian~) void
-  +delete(idItem: String) void
+  +deleteItem(idItem: String) void
+  +findPembayaranByPesanan(idPesanan: String) Pembayaran
+  +findPesananBelumBayar() List~Pesanan~
+  +findRiwayatPembayaran() List~RiwayatPembayaran~
+  +createPembayaran(pembayaran: Pembayaran) void
+  +updatePembayaran(pembayaran: Pembayaran) void
+  +createNotifikasi(notifikasi: Notifikasi) void
+  +findNotifikasiByPelanggan(idPelanggan: String) List~Notifikasi~
+  +findNomorTeleponByPesanan(idPesanan: String) String
+  +notifikasiExists(idPesanan: String, pesan: String) boolean
+  +markAllNotifikasiRead(idPelanggan: String) int
 }
 
-class TarifLaundryDAO {
+class TarifDAO {
   <<DAO>>
   +findAll() List~TarifLaundry~
   +findActive() List~TarifLaundry~
   +findByPaket(paket: PaketLaundry) TarifLaundry
   +updateHarga(paket: PaketLaundry, hargaPerKg: double) void
-}
-
-class PembayaranDAO {
-  <<DAO>>
-  +findByPesanan(idPesanan: String) Pembayaran
-  +create(pembayaran: Pembayaran) void
-}
-
-class NotifikasiDAO {
-  <<DAO>>
-  +create(notifikasi: Notifikasi) void
-  +create(connection: Connection, notifikasi: Notifikasi) void
-  +findByPelanggan(idPelanggan: String) List~Notifikasi~
-  +findNomorTeleponByPesanan(idPesanan: String) String
-  +exists(idPesanan: String, pesan: String) boolean
-  +exists(connection: Connection, idPesanan: String, pesan: String) boolean
-  +markAllReadByPelanggan(idPelanggan: String) int
 }
 
 class DashboardDAO {
@@ -583,60 +563,50 @@ Pesanan ..> TarifLaundry : snapshot harga
 TarifLaundry --> PaketLaundry
 ItemPakaian --> KategoriWarna
 Pembayaran --> StatusPembayaran
+RiwayatPembayaran --> StatusPembayaran
 Notifikasi --> Pesanan
 
 Pemilik ..> DataDasbor : memantau
 Pemilik ..> LaporanKeuangan : mengakses
 Pemilik ..> Pesanan : memantau
-Pemilik ..> TarifController : mengatur tarif
-TarifController --> TarifLaundryDAO
-TarifLaundryDAO --> TarifLaundry
+Pemilik ..> PemilikController : mengelola dashboard dan tarif
+PemilikController --> TarifDAO
+TarifDAO --> TarifLaundry
 
 AuthController --> UserDAO
 PenggunaController --> UserDAO
-PesananController --> PesananDAO
-PesananController --> TarifLaundryDAO
-PesananController --> ItemPakaianDAO
-PesananController --> PembayaranDAO
-PesananController --> NotifikasiController
-ItemController --> ItemPakaianDAO
-ItemController --> PesananDAO
-ItemController --> SmartGroupingService
-PembayaranController --> PembayaranDAO
-PembayaranController --> PesananDAO
-NotifikasiController --> NotifikasiDAO
-NotifikasiController --> PesananDAO
-NotifikasiController --> INotifiable
-DashboardController --> DashboardDAO
+LaundryController --> LaundryDAO
+LaundryController --> TarifDAO
+LaundryController --> SmartGroupingService
+LaundryController --> AppNotifikasi
+LaundryController --> WhatsAppNotifikasi
+PemilikController --> DashboardDAO
 
 UserDAO --> Pengguna
 UserDAO --> Pelanggan
 UserDAO --> Karyawan
 UserDAO --> Pemilik
-PesananDAO --> Pesanan
-ItemPakaianDAO --> ItemPakaian
-PembayaranDAO --> Pembayaran
-NotifikasiDAO --> Notifikasi
+LaundryDAO --> Pesanan
+LaundryDAO --> ItemPakaian
+LaundryDAO --> Pembayaran
+LaundryDAO --> RiwayatPembayaran
+LaundryDAO --> Notifikasi
 DashboardDAO --> DataDasbor
 DashboardDAO --> LaporanKeuangan
 
-AppNotifikasi --> NotifikasiDAO
-SmartGroupingService --> ItemPakaianDAO
+AppNotifikasi --> LaundryDAO
+SmartGroupingService --> LaundryDAO
 SmartGroupingService ..> Pesanan
 
 UserDAO ..> DatabaseConnection
-PesananDAO ..> DatabaseConnection
-ItemPakaianDAO ..> DatabaseConnection
-TarifLaundryDAO ..> DatabaseConnection
-PembayaranDAO ..> DatabaseConnection
-NotifikasiDAO ..> DatabaseConnection
+LaundryDAO ..> DatabaseConnection
+TarifDAO ..> DatabaseConnection
 DashboardDAO ..> DatabaseConnection
 
 AuthController ..> PasswordUtil
 PenggunaController ..> PasswordUtil
 PenggunaController ..> IdGenerator
-PesananController ..> IdGenerator
-ItemController ..> IdGenerator
+LaundryController ..> IdGenerator
 
 Main --> LoginFrame
 LoginFrame --> AuthController
@@ -644,16 +614,11 @@ LoginFrame --> PenggunaController
 MainFrame --> PemilikPanel
 MainFrame --> KaryawanPanel
 MainFrame --> PelangganPanel
-KaryawanPanel --> PesananController
-KaryawanPanel --> ItemController
-KaryawanPanel --> PembayaranController
-KaryawanPanel --> NotifikasiController
-PemilikPanel --> DashboardController
+KaryawanPanel --> LaundryController
 PemilikPanel --> PenggunaController
-PemilikPanel --> PesananController
-PemilikPanel --> TarifController
-PelangganPanel --> PesananController
-PelangganPanel --> NotifikasiController
+PemilikPanel --> PemilikController
+PemilikPanel --> LaundryController
+PelangganPanel --> LaundryController
 LoginFrame ..> AppTheme
 MainFrame ..> AppTheme
 KaryawanPanel ..> UiUtil
@@ -671,7 +636,7 @@ PelangganPanel ..> UiUtil
 - `Pesanan` - Pusat data transaksi laundry
 - `ItemPakaian` - Representasi digital setiap pakaian
 - `SmartGroupingService` - Service pengelompokan otomatis
-- `ItemController` - Pencatatan detail dan pengelompokan pakaian
+- `LaundryController` - Alur pesanan, item pakaian, pembayaran, dan notifikasi
 
 **Modul C: Layanan Sistem**
 - `Pembayaran` - Pencatatan pembayaran lunas per pesanan
@@ -746,6 +711,7 @@ Catatan:
 - Database awal hanya berisi satu akun pemilik sebagai super admin. Tidak ada akun karyawan, pelanggan, atau transaksi dummy.
 - Role pemilik hanya disediakan satu akun awal dan tidak dibuat dari menu register.
 - Karyawan ditambahkan dari dashboard pemilik.
+- Pemilik dapat menghapus akun karyawan; riwayat pesanan yang pernah ditangani tetap tersimpan.
 - Pelanggan dapat membuat akun sendiri melalui tombol **Daftar Pelanggan** di halaman login.
 - Struktur database memakai `pengguna` sebagai tabel parent untuk login/role, sedangkan `pelanggan`, `karyawan`, dan `pemilik` hanya menyimpan atribut khusus masing-masing role.
 - Tarif laundry dikelola oleh pemilik dari menu **Tarif Laundry**:
@@ -761,7 +727,7 @@ Catatan:
 3. Logout, lalu buat satu akun pelanggan melalui tombol **Daftar Pelanggan**.
 4. Login sebagai karyawan dan buat pesanan untuk pelanggan tersebut.
 5. Tambahkan detail item pakaian, jalankan smart grouping, lalu perbarui status pesanan secara berurutan.
-6. Catat pembayaran dan tampilkan link template WhatsApp saat pesanan siap diambil.
+6. Catat pembayaran dari daftar tagihan belum lunas, lalu periksa tabel riwayat pembayaran.
 7. Login sebagai pelanggan untuk menunjukkan status aktif, notifikasi, dan riwayat pesanan.
 8. Login kembali sebagai pemilik untuk memantau pesanan aktif, riwayat pesanan, perubahan dashboard, dan laporan keuangan.
 
@@ -775,6 +741,7 @@ Untuk mengembalikan database yang sudah pernah dipakai ke kondisi awal presentas
 - Item pakaian hanya dapat ditambah atau dihapus sebelum proses pencucian dimulai.
 - Item baru berstatus `Belum Dikelompokkan`; karyawan menekan **Kelompokkan Warna** untuk menerapkan smart grouping.
 - Satu pesanan memiliki satu pembayaran sesuai total tagihan dan langsung dicatat sebagai lunas.
+- Daftar pembayaran menempatkan tagihan belum lunas di atas dan hanya menampilkan tagihan belum lunas pada dropdown pencatatan.
 - Pendapatan dashboard dihitung dari pembayaran lunas pada tanggal pembayaran.
 - Perubahan status dan pembuatan notifikasi aplikasi disimpan dalam satu transaksi database.
 - Notifikasi aplikasi dibuat ketika status berubah menjadi siap diambil atau selesai.

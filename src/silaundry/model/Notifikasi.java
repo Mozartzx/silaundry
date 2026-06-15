@@ -2,6 +2,7 @@ package silaundry.model;
 
 import java.time.LocalDateTime;
 
+// Menyimpan pesan status laundry yang dapat dibaca oleh pelanggan di aplikasi.
 public class Notifikasi {
     private String idNotifikasi;
     private String idPesanan;

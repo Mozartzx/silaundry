@@ -24,6 +24,7 @@ import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicButtonUI;
 
+// Menyimpan warna, font, dan pembentuk komponen agar tampilan aplikasi konsisten.
 public final class AppTheme {
     public static final Color BACKGROUND = new Color(245, 247, 250);
     public static final Color SURFACE = Color.WHITE;
