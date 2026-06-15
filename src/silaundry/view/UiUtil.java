@@ -164,7 +164,7 @@ public final class UiUtil {
             case "Pelanggan", "Nama", "Username" -> 170;
             case "Paket" -> 150;
             case "Berat", "Harga/kg", "Total", "Jumlah", "Status", "Aktif", "Shift", "Status Baca" -> 120;
-            case "Telepon", "Kode QR" -> 135;
+            case "Telepon" -> 135;
             case "Jenis", "Warna", "Kondisi", "Metode" -> 140;
             case "Smart Group" -> 155;
             case "Deskripsi Detail", "Catatan", "Pesan" -> 300;

@@ -4,7 +4,7 @@
 ![NetBeans](https://img.shields.io/badge/NetBeans-1B6AC6?style=flat&logo=apachenetbeanside&logoColor=white)
 ![OOP](https://img.shields.io/badge/Paradigm-OOP-blue)
 
-Sistem Informasi Manajemen Laundry berbasis desktop untuk UMKM dengan fitur **Item Tracking** dan **Smart Grouping**.
+Sistem Informasi Manajemen Laundry berbasis desktop untuk UMKM dengan fitur **Monitoring Pesanan** dan **Smart Grouping**.
 
 ## 📋 Deskripsi Proyek
 
@@ -12,9 +12,9 @@ SILAUNDRY adalah aplikasi desktop Java yang dirancang untuk mengatasi masalah op
 
 ### 🎯 Solusi Teknis Utama
 
-1. **Item Tracking System**
-   - Identifikasi unik untuk setiap potong pakaian
-   - Pelacakan relasional ke ID Pelanggan
+1. **Monitoring Pesanan**
+   - Pelanggan memantau pesanan aktif dan riwayat miliknya
+   - Pemilik memantau seluruh pesanan melalui filter status
    - Memastikan tidak ada identitas pakaian yang hilang meski dicampur dalam satu mesin
 
 2. **Smart Grouping**
@@ -30,8 +30,7 @@ SILAUNDRY adalah aplikasi desktop Java yang dirancang untuk mengatasi masalah op
 ### Ruang Lingkup Sistem
 
 - ✅ **User Management**: Owner, Karyawan, Pelanggan
-- ✅ **Order Management**: CRUD pesanan, pencatatan jenis pakaian, kalkulasi harga, status tracking
-- ✅ **Item Tracking**: Identifikasi unik per pakaian dengan relasi ke pelanggan
+- ✅ **Order Management**: CRUD pesanan, pencatatan jenis pakaian, kalkulasi harga, dan status proses
 - ✅ **Smart Grouping**: Logika back-end untuk sortir otomatis berdasarkan warna
 - ✅ **Monitoring**: Akses informasi status bagi pelanggan dan performa bagi owner
 
@@ -203,7 +202,7 @@ Pemilik --> LaporanKeuangan : melihat
 
 ### Final Class Diagram
 
-Diagram ini merepresentasikan struktur implementasi SiLaundry saat ini. Getter, setter, constructor, dan method helper rutin tidak seluruhnya ditampilkan agar relasi utama tetap terbaca.
+Diagram ini merepresentasikan struktur implementasi SiLaundry setelah penyederhanaan tingkat menengah. Getter, setter, constructor, dan method helper rutin tidak seluruhnya ditampilkan agar relasi utama tetap terbaca.
 
 ```mermaid
 classDiagram
@@ -240,6 +239,7 @@ class Karyawan {
 class Pemilik {
   -String idPemilik
   +pantauPesanan() void
+  +lihatDaftarPelanggan() void
   +tinjauDasborAnalitik() void
   +unduhLaporanKeuangan() void
   +kelolaDataKaryawan() void
@@ -282,29 +282,7 @@ class ItemPakaian {
   -String kondisiAwal
   -String deskripsiDetail
   -String labelSmartGroup
-  -String kodeQR
   +terapkanGrupWarna() void
-  +generateKodeQR() void
-}
-
-class ProsesLaundry {
-  -String idProses
-  -String idPesanan
-  -String idMesin
-  -TahapLaundry tahap
-  -LocalDateTime waktuMulai
-  -LocalDateTime waktuSelesai
-  +updateProses() void
-  +updateProses(tahap: TahapLaundry, waktuSelesai: LocalDateTime) void
-}
-
-class MesinCuci {
-  -String idMesin
-  -String namaMesin
-  -float kapasitas
-  -StatusMesin status
-  +mulaiCuci() void
-  +selesaiCuci() void
 }
 
 class Pembayaran {
@@ -313,18 +291,7 @@ class Pembayaran {
   -String metode
   -double jumlah
   -StatusPembayaran status
-  +prosesPembayaran(totalTagihan: double) void
-}
-
-class DetailPembayaran {
-  -String idDetail
-  -String idPembayaran
-  -String metode
-  -double jumlah
-  -LocalDateTime waktuBayar
-  -String keterangan
-  +generateStruk() void
-  +formatStruk() String
+  +prosesPembayaran() void
 }
 
 class INotifiable {
@@ -378,19 +345,6 @@ class SmartGroupingService {
   +kelompokkanItem(idPesanan: String) int
 }
 
-class ItemTrackingService {
-  -ItemPakaianDAO itemPakaianDAO
-  -PesananDAO pesananDAO
-  +trackItemResult(trackingKey: String) TrackingResult
-  +trackItemResult(trackingKey: String, pengguna: Pengguna) TrackingResult
-}
-
-class TrackingResult {
-  -ItemPakaian itemPakaian
-  -Pesanan pesanan
-  +toSummary() String
-}
-
 class AuthController {
   -UserDAO userDAO
   +login(username: String, password: String, role: Role) Pengguna
@@ -425,13 +379,10 @@ class ItemController {
   -ItemPakaianDAO itemPakaianDAO
   -PesananDAO pesananDAO
   -SmartGroupingService smartGroupingService
-  -ItemTrackingService itemTrackingService
   +getAllItems() List~ItemPakaian~
   +getItemsByPesanan(idPesanan: String) List~ItemPakaian~
   +tambahItem(idPesanan: String, jenis: String, warna: KategoriWarna, kondisi: String, deskripsi: String) void
   +jalankanSmartGrouping(idPesanan: String) int
-  +lacakItem(trackingKey: String) TrackingResult
-  +lacakItem(trackingKey: String, pengguna: Pengguna) TrackingResult
   +hapusItem(idItem: String) void
 }
 
@@ -447,7 +398,7 @@ class PembayaranController {
   -PembayaranDAO pembayaranDAO
   -PesananDAO pesananDAO
   +getPembayaran(idPesanan: String) Pembayaran
-  +simpanPembayaran(idPesanan: String, metode: String, jumlah: double) Pembayaran
+  +catatPembayaran(idPesanan: String, metode: String) Pembayaran
 }
 
 class NotifikasiController {
@@ -489,8 +440,7 @@ class PesananDAO {
 class ItemPakaianDAO {
   <<DAO>>
   +findByPesanan(idPesanan: String) List~ItemPakaian~
-  +findByTrackingKey(trackingKey: String) ItemPakaian
-  +findByTrackingKeyAndPelanggan(key: String, idPelanggan: String) ItemPakaian
+  +findById(idItem: String) ItemPakaian
   +countByPesanan(idPesanan: String) int
   +create(item: ItemPakaian) void
   +updateSmartGroups(items: List~ItemPakaian~) void
@@ -508,7 +458,7 @@ class TarifLaundryDAO {
 class PembayaranDAO {
   <<DAO>>
   +findByPesanan(idPesanan: String) Pembayaran
-  +upsert(pembayaran: Pembayaran) void
+  +create(pembayaran: Pembayaran) void
 }
 
 class NotifikasiDAO {
@@ -554,14 +504,13 @@ class MainFrame {
 }
 class KaryawanPanel {
   <<view>>
+  +refreshData() void
 }
 class PemilikPanel {
   <<view>>
+  +refreshData() void
 }
 class PelangganPanel {
-  <<view>>
-}
-class TrackingPanel {
   <<view>>
 }
 class AppTheme {
@@ -581,7 +530,6 @@ class Role {
 class StatusPesanan {
   <<enumeration>>
   BARU
-  DITERIMA
   DIPROSES
   DICUCI
   DIKERINGKAN
@@ -613,26 +561,7 @@ class KategoriWarna {
 class StatusPembayaran {
   <<enumeration>>
   BELUM_BAYAR
-  SEBAGIAN
   LUNAS
-  DIBATALKAN
-}
-
-class StatusMesin {
-  <<enumeration>>
-  TERSEDIA
-  DIGUNAKAN
-  PERAWATAN
-}
-
-class TahapLaundry {
-  <<enumeration>>
-  PENERIMAAN
-  PENCUCIAN
-  PENGERINGAN
-  PENYETRIKAAN
-  PENGEMASAN
-  SELESAI
 }
 
 Pengguna <|-- Pelanggan
@@ -648,16 +577,11 @@ Karyawan "1" --> "0..*" Pesanan : menginput/mengelola
 Pesanan "1" *-- "0..*" ItemPakaian : berisi
 Pesanan "1" --> "0..1" Pembayaran : memiliki
 Pesanan "1" --> "0..*" Notifikasi : menghasilkan
-Pembayaran "1" --> "0..*" DetailPembayaran : detail
 Pesanan --> StatusPesanan
 Pesanan --> PaketLaundry
 Pesanan ..> TarifLaundry : snapshot harga
 TarifLaundry --> PaketLaundry
 ItemPakaian --> KategoriWarna
-ProsesLaundry --> Pesanan
-ProsesLaundry --> MesinCuci
-ProsesLaundry --> TahapLaundry
-MesinCuci --> StatusMesin
 Pembayaran --> StatusPembayaran
 Notifikasi --> Pesanan
 
@@ -678,7 +602,6 @@ PesananController --> NotifikasiController
 ItemController --> ItemPakaianDAO
 ItemController --> PesananDAO
 ItemController --> SmartGroupingService
-ItemController --> ItemTrackingService
 PembayaranController --> PembayaranDAO
 PembayaranController --> PesananDAO
 NotifikasiController --> NotifikasiDAO
@@ -700,11 +623,6 @@ DashboardDAO --> LaporanKeuangan
 AppNotifikasi --> NotifikasiDAO
 SmartGroupingService --> ItemPakaianDAO
 SmartGroupingService ..> Pesanan
-ItemTrackingService --> ItemPakaianDAO
-ItemTrackingService --> PesananDAO
-ItemTrackingService --> TrackingResult
-TrackingResult --> ItemPakaian
-TrackingResult --> Pesanan
 
 UserDAO ..> DatabaseConnection
 PesananDAO ..> DatabaseConnection
@@ -726,7 +644,6 @@ LoginFrame --> PenggunaController
 MainFrame --> PemilikPanel
 MainFrame --> KaryawanPanel
 MainFrame --> PelangganPanel
-MainFrame --> TrackingPanel
 KaryawanPanel --> PesananController
 KaryawanPanel --> ItemController
 KaryawanPanel --> PembayaranController
@@ -737,13 +654,11 @@ PemilikPanel --> PesananController
 PemilikPanel --> TarifController
 PelangganPanel --> PesananController
 PelangganPanel --> NotifikasiController
-TrackingPanel --> ItemController
 LoginFrame ..> AppTheme
 MainFrame ..> AppTheme
 KaryawanPanel ..> UiUtil
 PemilikPanel ..> UiUtil
 PelangganPanel ..> UiUtil
-TrackingPanel ..> UiUtil
 ```
 
 ### Penjelasan Modul
@@ -755,13 +670,11 @@ TrackingPanel ..> UiUtil
 **Modul B: Operasional Bisnis**
 - `Pesanan` - Pusat data transaksi laundry
 - `ItemPakaian` - Representasi digital setiap pakaian
-- `ProsesLaundry` - Tahapan proses pencucian
-- `MesinCuci` - Representasi mesin fisik
 - `SmartGroupingService` - Service pengelompokan otomatis
-- `ItemTrackingService` - Service pelacakan item
+- `ItemController` - Pencatatan detail dan pengelompokan pakaian
 
 **Modul C: Layanan Sistem**
-- `Pembayaran` & `DetailPembayaran` - Manajemen transaksi
+- `Pembayaran` - Pencatatan pembayaran lunas per pesanan
 - `INotifiable`, `AppNotifikasi`, `WhatsAppNotifikasi`, dan `Notifikasi` - Sistem notifikasi aplikasi dan template link WhatsApp
 - `DataDasbor` - Dashboard metrik real-time
 - `LaporanKeuangan` - Laporan keuangan periodik
@@ -801,7 +714,7 @@ TrackingPanel ..> UiUtil
    - Jalankan MySQL dari XAMPP
    - Import file `database/silaundry_schema.sql` melalui phpMyAdmin atau MySQL client
    - Jika username/password MySQL berbeda, ubah `config/db.properties`
-   - Jika database lama sudah pernah di-import dan tidak ingin drop ulang, jalankan migrasi secara berurutan: `database/migrate_realistic_login_schema.sql`, `database/migrate_tarif_per_kilo.sql`, lalu `database/migrate_review_fixes.sql`
+   - Untuk database versi lama, lakukan backup bila diperlukan lalu import ulang `database/silaundry_schema.sql`
 
 3. **Siapkan JDBC driver**
    - Unduh MySQL Connector/J
@@ -820,7 +733,7 @@ TrackingPanel ..> UiUtil
 
 6. **Jalankan pengujian**
    - Unit test aturan bisnis: target Ant `test`
-   - Integration test database: target Ant `integration-test` setelah database dan migrasi siap
+   - Integration test database: target Ant `integration-test` setelah database siap
    - Dari terminal dengan Ant tersedia: `ant clean test integration-test jar`
 
 ### Akun Awal Presentasi
@@ -849,7 +762,7 @@ Catatan:
 4. Login sebagai karyawan dan buat pesanan untuk pelanggan tersebut.
 5. Tambahkan detail item pakaian, jalankan smart grouping, lalu perbarui status pesanan secara berurutan.
 6. Catat pembayaran dan tampilkan link template WhatsApp saat pesanan siap diambil.
-7. Login sebagai pelanggan untuk menunjukkan status aktif, tracking item, notifikasi, dan riwayat pesanan.
+7. Login sebagai pelanggan untuk menunjukkan status aktif, notifikasi, dan riwayat pesanan.
 8. Login kembali sebagai pemilik untuk memantau pesanan aktif, riwayat pesanan, perubahan dashboard, dan laporan keuangan.
 
 Untuk mengembalikan database yang sudah pernah dipakai ke kondisi awal presentasi tanpa membuat ulang tabel, jalankan `database/reset_presentasi.sql`.
@@ -861,9 +774,8 @@ Untuk mengembalikan database yang sudah pernah dipakai ke kondisi awal presentas
 - Minimal satu item pakaian harus tercatat sebelum status berubah menjadi `DICUCI`.
 - Item pakaian hanya dapat ditambah atau dihapus sebelum proses pencucian dimulai.
 - Item baru berstatus `Belum Dikelompokkan`; karyawan menekan **Kelompokkan Warna** untuk menerapkan smart grouping.
-- Setiap input pembayaran dianggap sebagai cicilan baru. Total pembayaran dan status belum bayar, sebagian, atau lunas dihitung otomatis.
-- Setiap cicilan dicatat sebagai detail pembayaran sehingga riwayat transaksi tidak tertimpa.
-- Pendapatan dashboard dihitung dari nominal pembayaran pada tanggal pembayaran, termasuk pembayaran sebagian.
+- Satu pesanan memiliki satu pembayaran sesuai total tagihan dan langsung dicatat sebagai lunas.
+- Pendapatan dashboard dihitung dari pembayaran lunas pada tanggal pembayaran.
 - Perubahan status dan pembuatan notifikasi aplikasi disimpan dalam satu transaksi database.
 - Notifikasi aplikasi dibuat ketika status berubah menjadi siap diambil atau selesai.
 - Pelanggan hanya dapat melacak item pakaian yang terhubung ke pesanannya sendiri.
@@ -887,6 +799,7 @@ Untuk mengembalikan database yang sudah pernah dipakai ke kondisi awal presentas
 
 ### Untuk Owner/Pemilik
 - Pantau pesanan aktif dan riwayat pesanan seluruh pelanggan
+- Lihat dan cari daftar seluruh pelanggan yang terdaftar
 - Kelola harga per kilo untuk paket Standard 2 Hari dan Express 1 Hari
 - 📈 Dashboard analitik performa
 - 💰 Laporan keuangan bulanan

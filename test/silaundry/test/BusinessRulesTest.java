@@ -22,7 +22,7 @@ public final class BusinessRulesTest {
     }
 
     private static void testAlurStatusPesanan() {
-        check(StatusPesanan.BARU.dapatBerubahKe(StatusPesanan.DITERIMA), "BARU harus dapat menjadi DITERIMA");
+        check(StatusPesanan.BARU.dapatBerubahKe(StatusPesanan.DIPROSES), "BARU harus dapat menjadi DIPROSES");
         check(!StatusPesanan.BARU.dapatBerubahKe(StatusPesanan.DICUCI),
                 "BARU tidak boleh langsung menjadi DICUCI");
         check(StatusPesanan.DIPROSES.dapatBerubahKe(StatusPesanan.DIBATALKAN),
@@ -40,15 +40,15 @@ public final class BusinessRulesTest {
     }
 
     private static void testStatusPembayaran() {
-        Pembayaran pembayaran = new Pembayaran(
-                "PAY-TEST", "ORD-TEST", "Tunai", 3_000, StatusPembayaran.BELUM_BAYAR);
-        pembayaran.prosesPembayaran(10_000);
-        check(pembayaran.getStatus() == StatusPembayaran.SEBAGIAN,
-                "Pembayaran di bawah tagihan harus berstatus SEBAGIAN");
+        Pembayaran belumBayar = new Pembayaran(
+                "PAY-TEST", "ORD-TEST", "Tunai", 0, StatusPembayaran.BELUM_BAYAR);
+        belumBayar.prosesPembayaran();
+        check(belumBayar.getStatus() == StatusPembayaran.BELUM_BAYAR,
+                "Pembayaran tanpa nominal harus berstatus BELUM_BAYAR");
 
         Pembayaran lunas = new Pembayaran(
                 "PAY-TEST-2", "ORD-TEST", "QRIS", 10_000, StatusPembayaran.BELUM_BAYAR);
-        lunas.prosesPembayaran(10_000);
+        lunas.prosesPembayaran();
         check(lunas.getStatus() == StatusPembayaran.LUNAS,
                 "Pembayaran sebesar tagihan harus berstatus LUNAS");
     }
@@ -56,7 +56,7 @@ public final class BusinessRulesTest {
     private static void testSmartGrouping() {
         ItemPakaian item = new ItemPakaian(
                 "ITM-TEST", "ORD-TEST", "Kemeja", KategoriWarna.PUTIH,
-                "Normal", "Kemeja putih lengan panjang", "Belum Dikelompokkan", "QR-ITM-TEST");
+                "Normal", "Kemeja putih lengan panjang", "Belum Dikelompokkan");
         item.terapkanGrupWarna();
         check("Grup Putih".equals(item.getLabelSmartGroup()),
                 "Kategori PUTIH harus masuk Grup Putih");

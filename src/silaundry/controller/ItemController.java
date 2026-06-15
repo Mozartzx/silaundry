@@ -5,19 +5,15 @@ import java.util.List;
 import silaundry.dao.ItemPakaianDAO;
 import silaundry.dao.PesananDAO;
 import silaundry.model.ItemPakaian;
-import silaundry.model.Pengguna;
 import silaundry.model.Pesanan;
 import silaundry.model.enums.KategoriWarna;
-import silaundry.service.ItemTrackingService;
 import silaundry.service.SmartGroupingService;
-import silaundry.service.TrackingResult;
 import silaundry.util.IdGenerator;
 
 public class ItemController {
     private final ItemPakaianDAO itemPakaianDAO = new ItemPakaianDAO();
     private final PesananDAO pesananDAO = new PesananDAO();
     private final SmartGroupingService smartGroupingService = new SmartGroupingService();
-    private final ItemTrackingService itemTrackingService = new ItemTrackingService();
 
     public List<ItemPakaian> getAllItems() throws SQLException {
         return itemPakaianDAO.findAll();
@@ -44,8 +40,7 @@ public class ItemController {
                 kategoriWarna,
                 kondisiAwal.trim(),
                 deskripsiDetail.trim(),
-                SmartGroupingService.BELUM_DIKELOMPOKKAN,
-                "QR-" + idItem);
+                SmartGroupingService.BELUM_DIKELOMPOKKAN);
         itemPakaianDAO.create(item);
     }
 
@@ -58,16 +53,8 @@ public class ItemController {
         return jumlahItem;
     }
 
-    public TrackingResult lacakItem(String trackingKey) throws SQLException {
-        return itemTrackingService.trackItemResult(trackingKey);
-    }
-
-    public TrackingResult lacakItem(String trackingKey, Pengguna pengguna) throws SQLException {
-        return itemTrackingService.trackItemResult(trackingKey, pengguna);
-    }
-
     public void hapusItem(String idItem) throws SQLException {
-        ItemPakaian item = itemPakaianDAO.findByTrackingKey(idItem);
+        ItemPakaian item = itemPakaianDAO.findById(idItem);
         if (item == null) {
             throw new IllegalArgumentException("Item pakaian tidak ditemukan.");
         }

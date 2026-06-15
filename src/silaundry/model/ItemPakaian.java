@@ -10,10 +10,9 @@ public class ItemPakaian {
     private String kondisiAwal;
     private String deskripsiDetail;
     private String labelSmartGroup;
-    private String kodeQR;
 
     public ItemPakaian(String idItem, String idPesanan, String jenisPakaian, KategoriWarna kategoriWarna,
-            String kondisiAwal, String deskripsiDetail, String labelSmartGroup, String kodeQR) {
+            String kondisiAwal, String deskripsiDetail, String labelSmartGroup) {
         this.idItem = idItem;
         this.idPesanan = idPesanan;
         this.jenisPakaian = jenisPakaian;
@@ -21,15 +20,10 @@ public class ItemPakaian {
         this.kondisiAwal = kondisiAwal;
         this.deskripsiDetail = deskripsiDetail;
         this.labelSmartGroup = labelSmartGroup;
-        this.kodeQR = kodeQR;
     }
 
     public void terapkanGrupWarna() {
         this.labelSmartGroup = kategoriWarna.getSmartGroupLabel();
-    }
-
-    public void generateKodeQR() {
-        this.kodeQR = "QR-" + idItem;
     }
 
     public String getIdItem() {
@@ -88,11 +82,4 @@ public class ItemPakaian {
         this.labelSmartGroup = labelSmartGroup;
     }
 
-    public String getKodeQR() {
-        return kodeQR;
-    }
-
-    public void setKodeQR(String kodeQR) {
-        this.kodeQR = kodeQR;
-    }
 }

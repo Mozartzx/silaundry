@@ -23,6 +23,10 @@ public class Pemilik extends Pengguna {
         System.out.println("Pemilik mengelola data karyawan");
     }
 
+    public void lihatDaftarPelanggan() {
+        System.out.println("Pemilik melihat daftar pelanggan");
+    }
+
     public String getId() {
         return idPemilik;
     }

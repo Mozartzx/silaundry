@@ -16,7 +16,7 @@ public class PembayaranController {
         return pembayaranDAO.findByPesanan(idPesanan);
     }
 
-    public Pembayaran simpanPembayaran(String idPesanan, String metode, double jumlah) throws SQLException {
+    public Pembayaran catatPembayaran(String idPesanan, String metode) throws SQLException {
         Pesanan pesanan = pesananDAO.findById(idPesanan);
         if (pesanan == null) {
             throw new IllegalArgumentException("Pesanan tidak ditemukan.");
@@ -27,25 +27,15 @@ public class PembayaranController {
         if (!pesanan.getStatusPesanan().dapatMenerimaPembayaran()) {
             throw new IllegalArgumentException("Pesanan yang dibatalkan tidak dapat menerima pembayaran.");
         }
-        if (jumlah <= 0) {
-            throw new IllegalArgumentException("Nominal pembayaran harus lebih dari Rp0.");
-        }
         Pembayaran existing = pembayaranDAO.findByPesanan(idPesanan);
-        if (existing != null && existing.getStatus() == StatusPembayaran.LUNAS) {
+        if (existing != null) {
             throw new IllegalArgumentException("Pesanan ini sudah lunas.");
         }
-        double totalSebelumnya = existing == null ? 0 : existing.getJumlah();
-        double sisaTagihan = pesanan.getTotalBiaya() - totalSebelumnya;
-        if (jumlah > sisaTagihan) {
-            throw new IllegalArgumentException("Nominal melebihi sisa tagihan sebesar Rp"
-                    + Math.round(sisaTagihan) + ".");
-        }
-        String idPembayaran = existing != null ? existing.getIdPembayaran() : IdGenerator.generate("PAY");
-        double totalDibayar = totalSebelumnya + jumlah;
         Pembayaran pembayaran = new Pembayaran(
-                idPembayaran, idPesanan, metode.trim(), totalDibayar, StatusPembayaran.BELUM_BAYAR);
-        pembayaran.prosesPembayaran(pesanan.getTotalBiaya());
-        pembayaranDAO.upsert(pembayaran);
+                IdGenerator.generate("PAY"), idPesanan, metode.trim(), pesanan.getTotalBiaya(),
+                StatusPembayaran.BELUM_BAYAR);
+        pembayaran.prosesPembayaran();
+        pembayaranDAO.create(pembayaran);
         return pembayaran;
     }
 }

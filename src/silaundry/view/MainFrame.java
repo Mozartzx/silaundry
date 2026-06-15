@@ -50,13 +50,20 @@ public class MainFrame extends JFrame {
             addRoute("Status Laundry", "Pantau pesanan dan riwayat", new PelangganPanel(pelanggan));
         }
         if (pengguna instanceof Karyawan karyawan) {
-            addRoute("Operasional", "Pesanan, item, pembayaran", new KaryawanPanel(karyawan));
+            addRoute("Pesanan", "Tambah dan update pesanan",
+                    new KaryawanPanel(karyawan, KaryawanPanel.Page.PESANAN));
+            addRoute("Item Pakaian", "Catat ciri dan kelompok warna",
+                    new KaryawanPanel(karyawan, KaryawanPanel.Page.ITEM_PAKAIAN));
+            addRoute("Pembayaran", "Catat pembayaran lunas",
+                    new KaryawanPanel(karyawan, KaryawanPanel.Page.PEMBAYARAN));
         }
         if (pengguna instanceof Pemilik) {
-            addRoute("Dashboard Pemilik", "Laporan dan karyawan", new PemilikPanel());
+            addRoute("Dashboard", "Ringkasan usaha", new PemilikPanel(PemilikPanel.Page.DASHBOARD));
+            addRoute("Pantau Pesanan", "Semua transaksi laundry", new PemilikPanel(PemilikPanel.Page.PESANAN));
+            addRoute("Daftar Pelanggan", "Lihat pelanggan terdaftar", new PemilikPanel(PemilikPanel.Page.PELANGGAN));
+            addRoute("Kelola Karyawan", "Tambah dan nonaktifkan akun", new PemilikPanel(PemilikPanel.Page.KARYAWAN));
+            addRoute("Tarif Laundry", "Atur harga per kilo", new PemilikPanel(PemilikPanel.Page.TARIF));
         }
-        addRoute("Item Tracking", pengguna instanceof Pelanggan ? "Lacak item laundry Anda" : "Cari item dengan ID/QR",
-                new TrackingPanel(pengguna));
         selectFirstRoute();
         return shell;
     }
@@ -112,6 +119,11 @@ public class MainFrame extends JFrame {
         button.addActionListener(event -> {
             cardLayout.show(contentPanel, title);
             setActiveButton(button);
+            if (content instanceof KaryawanPanel panel) {
+                panel.refreshData();
+            } else if (content instanceof PemilikPanel panel) {
+                panel.refreshData();
+            }
         });
         navList.add(Box.createVerticalStrut(10));
         navList.add(button);

@@ -27,7 +27,7 @@ public final class DatabaseIntegrationTest {
         cleanup();
         try {
             setup();
-            testPembayaranKumulatif();
+            testPembayaranLunas();
             testSmartGroupingEksplisit();
             testPenguncianItem();
             testStatusDanNotifikasiAtomik();
@@ -37,29 +37,21 @@ public final class DatabaseIntegrationTest {
         }
     }
 
-    private static void testPembayaranKumulatif() throws Exception {
+    private static void testPembayaranLunas() throws Exception {
         PembayaranController controller = new PembayaranController();
         DashboardDAO dashboardDAO = new DashboardDAO();
         double pendapatanSebelum = dashboardDAO.getDataDasbor().getPendapatanDiterima();
-        Pembayaran pertama = controller.simpanPembayaran("TSTORD1", "Tunai", 3_000);
-        check(pertama.getJumlah() == 3_000 && pertama.getStatus() == StatusPembayaran.SEBAGIAN,
-                "Pembayaran pertama harus tercatat sebagian");
-        check(dashboardDAO.getDataDasbor().getPendapatanDiterima() == pendapatanSebelum + 3_000,
-                "Pembayaran sebagian harus langsung masuk pendapatan dashboard");
-        check(dashboardDAO.getLaporanBulanIni().getTotalPendapatan() == pendapatanSebelum + 3_000,
-                "Laporan harus memakai waktu dan nominal pembayaran");
+        Pembayaran pembayaran = controller.catatPembayaran("TSTORD1", "Tunai");
+        check(pembayaran.getJumlah() == 10_000 && pembayaran.getStatus() == StatusPembayaran.LUNAS,
+                "Pembayaran harus langsung mengikuti total tagihan dan berstatus LUNAS");
+        check(queryInt("SELECT COUNT(*) FROM pembayaran WHERE id_pesanan='TSTORD1'") == 1,
+                "Satu pesanan hanya memiliki satu pembayaran");
+        check(dashboardDAO.getDataDasbor().getPendapatanDiterima() == pendapatanSebelum + 10_000,
+                "Pembayaran lunas harus masuk pendapatan dashboard");
+        check(dashboardDAO.getLaporanBulanIni().getTotalPendapatan() == pendapatanSebelum + 10_000,
+                "Laporan harus memakai nominal pembayaran lunas");
 
-        Pembayaran kedua = controller.simpanPembayaran("TSTORD1", "QRIS", 7_000);
-        check(kedua.getJumlah() == 10_000 && kedua.getStatus() == StatusPembayaran.LUNAS,
-                "Pembayaran kedua harus diakumulasi menjadi lunas");
-        check(queryInt("SELECT COUNT(*) FROM detail_pembayaran d JOIN pembayaran p "
-                + "ON p.id_pembayaran=d.id_pembayaran WHERE p.id_pesanan='TSTORD1'") == 2,
-                "Setiap cicilan harus memiliki detail pembayaran");
-        check(queryDouble("SELECT SUM(d.jumlah) FROM detail_pembayaran d JOIN pembayaran p "
-                + "ON p.id_pembayaran=d.id_pembayaran WHERE p.id_pesanan='TSTORD1'") == 10_000,
-                "Jumlah detail pembayaran harus sama dengan total dibayar");
-
-        expectIllegalArgument(() -> controller.simpanPembayaran("TSTORD1", "Tunai", 1_000));
+        expectIllegalArgument(() -> controller.catatPembayaran("TSTORD1", "QRIS"));
         expectIllegalArgument(() -> new PesananController().batalkanPesanan("TSTORD1"));
     }
 
@@ -115,9 +107,9 @@ public final class DatabaseIntegrationTest {
             insertOrder(connection, "TSTORD3", "DISETRIKA", 15_000);
             execute(connection, "INSERT INTO item_pakaian VALUES "
                     + "('TSTITM2','TSTORD2','Kaos','GELAP','Normal','Kaos hitam ukuran L',"
-                    + "'Grup Gelap','QR-TSTITM2'),"
+                    + "'Grup Gelap'),"
                     + "('TSTITM3','TSTORD3','Kemeja','PUTIH','Normal','Kemeja putih lengan panjang',"
-                    + "'Grup Putih','QR-TSTITM3')");
+                    + "'Grup Putih')");
             connection.commit();
         }
     }

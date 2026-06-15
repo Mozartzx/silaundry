@@ -16,10 +16,10 @@ public class DashboardDAO {
                     (SELECT COUNT(*) FROM pesanan WHERE status_pesanan NOT IN ('SELESAI','DIBATALKAN')) AS aktif,
                     (SELECT COALESCE(SUM(total_biaya), 0) FROM pesanan
                         WHERE status_pesanan NOT IN ('SELESAI','DIBATALKAN')) AS nilai_aktif,
-                    (SELECT COALESCE(SUM(d.jumlah), 0)
-                        FROM detail_pembayaran d
-                        WHERE YEAR(d.waktu_bayar) = YEAR(CURRENT_DATE())
-                          AND MONTH(d.waktu_bayar) = MONTH(CURRENT_DATE())) AS pendapatan_diterima,
+                    (SELECT COALESCE(SUM(p.jumlah), 0)
+                        FROM pembayaran p
+                        WHERE YEAR(p.tanggal_bayar) = YEAR(CURRENT_DATE())
+                          AND MONTH(p.tanggal_bayar) = MONTH(CURRENT_DATE())) AS pendapatan_diterima,
                     (SELECT COUNT(*) FROM item_pakaian) AS item_count,
                     (SELECT COUNT(*) FROM pelanggan) AS pelanggan_count
                 """;
@@ -40,10 +40,10 @@ public class DashboardDAO {
     public LaporanKeuangan getLaporanBulanIni() throws SQLException {
         String sql = """
                 SELECT
-                    (SELECT COALESCE(SUM(d.jumlah), 0)
-                     FROM detail_pembayaran d
-                     WHERE YEAR(d.waktu_bayar) = YEAR(CURRENT_DATE())
-                       AND MONTH(d.waktu_bayar) = MONTH(CURRENT_DATE())) AS total_pendapatan,
+                    (SELECT COALESCE(SUM(p.jumlah), 0)
+                     FROM pembayaran p
+                     WHERE YEAR(p.tanggal_bayar) = YEAR(CURRENT_DATE())
+                       AND MONTH(p.tanggal_bayar) = MONTH(CURRENT_DATE())) AS total_pendapatan,
                     (SELECT COUNT(*)
                      FROM pesanan ps
                      WHERE ps.status_pesanan = 'SELESAI'

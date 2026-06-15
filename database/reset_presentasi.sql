@@ -3,9 +3,7 @@ USE silaundry_db;
 -- Bersihkan data operasional agar demonstrasi dimulai dari kondisi kosong.
 SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM notifikasi;
-DELETE FROM detail_pembayaran;
 DELETE FROM pembayaran;
-DELETE FROM proses_laundry;
 DELETE FROM item_pakaian;
 DELETE FROM pesanan;
 DELETE FROM pelanggan;
@@ -61,5 +59,3 @@ ON DUPLICATE KEY UPDATE
     estimasi_hari = VALUES(estimasi_hari),
     harga_per_kg = VALUES(harga_per_kg),
     aktif = VALUES(aktif);
-
-UPDATE mesin_cuci SET status = 'TERSEDIA';

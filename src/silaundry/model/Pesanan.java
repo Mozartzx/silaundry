@@ -157,4 +157,10 @@ public class Pesanan {
     public List<ItemPakaian> getDaftarItem() {
         return daftarItem;
     }
+
+    @Override
+    public String toString() {
+        String pelanggan = namaPelanggan == null ? "" : " - " + namaPelanggan;
+        return idPesanan + pelanggan;
+    }
 }

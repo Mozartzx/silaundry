@@ -2,7 +2,6 @@ package silaundry.model.enums;
 
 public enum StatusPesanan {
     BARU("Baru"),
-    DITERIMA("Diterima"),
     DIPROSES("Diproses"),
     DICUCI("Dicuci"),
     DIKERINGKAN("Dikeringkan"),
@@ -26,11 +25,10 @@ public enum StatusPesanan {
             return false;
         }
         if (statusBaru == DIBATALKAN) {
-            return this == BARU || this == DITERIMA || this == DIPROSES;
+            return this == BARU || this == DIPROSES;
         }
         return switch (this) {
-            case BARU -> statusBaru == DITERIMA;
-            case DITERIMA -> statusBaru == DIPROSES;
+            case BARU -> statusBaru == DIPROSES;
             case DIPROSES -> statusBaru == DICUCI;
             case DICUCI -> statusBaru == DIKERINGKAN;
             case DIKERINGKAN -> statusBaru == DISETRIKA;
@@ -46,7 +44,7 @@ public enum StatusPesanan {
     }
 
     public boolean dapatMengubahItem() {
-        return this == BARU || this == DITERIMA || this == DIPROSES;
+        return this == BARU || this == DIPROSES;
     }
 
     public boolean dapatMenerimaPembayaran() {

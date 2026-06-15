@@ -2,9 +2,7 @@ package silaundry.model.enums;
 
 public enum StatusPembayaran {
     BELUM_BAYAR("Belum Bayar"),
-    SEBAGIAN("Sebagian"),
-    LUNAS("Lunas"),
-    DIBATALKAN("Dibatalkan");
+    LUNAS("Lunas");
 
     private final String displayName;
 

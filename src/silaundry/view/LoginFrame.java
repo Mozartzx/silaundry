@@ -99,7 +99,7 @@ public class LoginFrame extends JFrame {
         title.setForeground(Color.WHITE);
         title.setFont(AppTheme.TITLE_FONT.deriveFont(Font.BOLD, 28f));
 
-        JLabel copy = new JLabel("<html><div style='text-align:center'>Kelola pesanan, item pakaian, smart grouping,<br>tracking, pembayaran, dan laporan dalam satu aplikasi.</div></html>", JLabel.CENTER);
+        JLabel copy = new JLabel("<html><div style='text-align:center'>Kelola pesanan, item pakaian, smart grouping,<br>pembayaran, dan laporan dalam satu aplikasi.</div></html>", JLabel.CENTER);
         copy.setForeground(new Color(192, 203, 205));
         copy.setFont(AppTheme.SMALL_FONT);
 

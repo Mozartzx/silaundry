@@ -40,36 +40,11 @@ public class ItemPakaianDAO {
         return items;
     }
 
-    public ItemPakaian findByTrackingKey(String trackingKey) throws SQLException {
-        String sql = """
-                SELECT * FROM item_pakaian
-                WHERE id_item = ? OR kode_qr = ?
-                LIMIT 1
-                """;
+    public ItemPakaian findById(String idItem) throws SQLException {
+        String sql = "SELECT * FROM item_pakaian WHERE id_item = ?";
         try (Connection connection = DatabaseConnection.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, trackingKey);
-            statement.setString(2, trackingKey);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next() ? mapItem(resultSet) : null;
-            }
-        }
-    }
-
-    public ItemPakaian findByTrackingKeyAndPelanggan(String trackingKey, String idPelanggan) throws SQLException {
-        String sql = """
-                SELECT ip.*
-                FROM item_pakaian ip
-                JOIN pesanan ps ON ps.id_pesanan = ip.id_pesanan
-                WHERE (ip.id_item = ? OR ip.kode_qr = ?)
-                  AND ps.id_pelanggan = ?
-                LIMIT 1
-                """;
-        try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, trackingKey);
-            statement.setString(2, trackingKey);
-            statement.setString(3, idPelanggan);
+            statement.setString(1, idItem);
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? mapItem(resultSet) : null;
             }
@@ -91,8 +66,8 @@ public class ItemPakaianDAO {
     public void create(ItemPakaian item) throws SQLException {
         String sql = """
                 INSERT INTO item_pakaian (id_item, id_pesanan, jenis_pakaian, kategori_warna,
-                    kondisi_awal, deskripsi_detail, label_smart_group, kode_qr)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    kondisi_awal, deskripsi_detail, label_smart_group)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection connection = DatabaseConnection.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -103,7 +78,6 @@ public class ItemPakaianDAO {
             statement.setString(5, item.getKondisiAwal());
             statement.setString(6, item.getDeskripsiDetail());
             statement.setString(7, item.getLabelSmartGroup());
-            statement.setString(8, item.getKodeQR());
             statement.executeUpdate();
         }
     }
@@ -155,7 +129,6 @@ public class ItemPakaianDAO {
                 KategoriWarna.valueOf(resultSet.getString("kategori_warna")),
                 resultSet.getString("kondisi_awal"),
                 resultSet.getString("deskripsi_detail"),
-                resultSet.getString("label_smart_group"),
-                resultSet.getString("kode_qr"));
+                resultSet.getString("label_smart_group"));
     }
 }

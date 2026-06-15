@@ -49,14 +49,6 @@ CREATE TABLE pemilik (
         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-CREATE TABLE mesin_cuci (
-    id_mesin VARCHAR(20) PRIMARY KEY,
-    nama_mesin VARCHAR(50) NOT NULL,
-    kapasitas DECIMAL(5,2) NOT NULL,
-    status ENUM('TERSEDIA','DIGUNAKAN','PERAWATAN') NOT NULL DEFAULT 'TERSEDIA',
-    CONSTRAINT chk_mesin_kapasitas CHECK (kapasitas > 0)
-);
-
 CREATE TABLE tarif_laundry (
     id_tarif VARCHAR(20) PRIMARY KEY,
     paket_laundry ENUM('STANDARD_2_HARI','EXPRESS_1_HARI') NOT NULL UNIQUE,
@@ -76,7 +68,7 @@ CREATE TABLE pesanan (
     id_karyawan VARCHAR(20),
     tanggal_masuk DATE NOT NULL,
     estimasi_selesai DATE NOT NULL,
-    status_pesanan ENUM('BARU','DITERIMA','DIPROSES','DICUCI','DIKERINGKAN','DISETRIKA','SIAP_DIAMBIL','SELESAI','DIBATALKAN') NOT NULL DEFAULT 'BARU',
+    status_pesanan ENUM('BARU','DIPROSES','DICUCI','DIKERINGKAN','DISETRIKA','SIAP_DIAMBIL','SELESAI','DIBATALKAN') NOT NULL DEFAULT 'BARU',
     status_diperbarui_pada DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     paket_laundry ENUM('STANDARD_2_HARI','EXPRESS_1_HARI') NOT NULL,
     berat_kg DECIMAL(6,2) NOT NULL,
@@ -104,27 +96,10 @@ CREATE TABLE item_pakaian (
     kondisi_awal VARCHAR(120) NOT NULL,
     deskripsi_detail VARCHAR(255) NOT NULL,
     label_smart_group VARCHAR(60) NOT NULL,
-    kode_qr VARCHAR(60) NOT NULL UNIQUE,
     FOREIGN KEY (id_pesanan) REFERENCES pesanan(id_pesanan)
         ON UPDATE CASCADE ON DELETE CASCADE,
     INDEX idx_item_pesanan (id_pesanan),
     INDEX idx_item_warna_group (kategori_warna, label_smart_group)
-);
-
-CREATE TABLE proses_laundry (
-    id_proses VARCHAR(20) PRIMARY KEY,
-    id_pesanan VARCHAR(20) NOT NULL,
-    id_mesin VARCHAR(20),
-    tahap ENUM('PENERIMAAN','PENCUCIAN','PENGERINGAN','PENYETRIKAAN','PENGEMASAN','SELESAI') NOT NULL,
-    waktu_mulai DATETIME NOT NULL,
-    waktu_selesai DATETIME,
-    FOREIGN KEY (id_pesanan) REFERENCES pesanan(id_pesanan)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (id_mesin) REFERENCES mesin_cuci(id_mesin)
-        ON UPDATE CASCADE ON DELETE SET NULL,
-    INDEX idx_proses_pesanan (id_pesanan),
-    INDEX idx_proses_mesin (id_mesin),
-    CONSTRAINT chk_proses_waktu CHECK (waktu_selesai IS NULL OR waktu_selesai >= waktu_mulai)
 );
 
 CREATE TABLE pembayaran (
@@ -132,25 +107,12 @@ CREATE TABLE pembayaran (
     id_pesanan VARCHAR(20) NOT NULL UNIQUE,
     metode VARCHAR(30) NOT NULL,
     jumlah DECIMAL(12,2) NOT NULL,
-    status ENUM('BELUM_BAYAR','SEBAGIAN','LUNAS','DIBATALKAN') NOT NULL DEFAULT 'BELUM_BAYAR',
+    status ENUM('BELUM_BAYAR','LUNAS') NOT NULL DEFAULT 'BELUM_BAYAR',
+    tanggal_bayar DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_pesanan) REFERENCES pesanan(id_pesanan)
         ON UPDATE CASCADE ON DELETE CASCADE,
     INDEX idx_pembayaran_status (status),
     CONSTRAINT chk_pembayaran_jumlah CHECK (jumlah >= 0)
-);
-
-CREATE TABLE detail_pembayaran (
-    id_detail VARCHAR(20) PRIMARY KEY,
-    id_pembayaran VARCHAR(20) NOT NULL,
-    waktu_bayar DATETIME NOT NULL,
-    metode VARCHAR(30) NOT NULL,
-    jumlah DECIMAL(12,2) NOT NULL,
-    keterangan VARCHAR(150),
-    FOREIGN KEY (id_pembayaran) REFERENCES pembayaran(id_pembayaran)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    INDEX idx_detail_pembayaran (id_pembayaran),
-    INDEX idx_detail_waktu_bayar (waktu_bayar),
-    CONSTRAINT chk_detail_jumlah CHECK (jumlah > 0)
 );
 
 CREATE TABLE notifikasi (
@@ -223,11 +185,6 @@ INSERT INTO pengguna (id_pengguna, username, nama_lengkap, nomor_telepon, kata_s
 
 INSERT INTO pemilik (id_pemilik, id_pengguna) VALUES
 ('OWN001', 'USR001');
-
-INSERT INTO mesin_cuci (id_mesin, nama_mesin, kapasitas, status) VALUES
-('MSN001', 'Mesin A', 8.00, 'TERSEDIA'),
-('MSN002', 'Mesin B', 10.00, 'TERSEDIA'),
-('MSN003', 'Mesin C', 12.00, 'PERAWATAN');
 
 INSERT INTO tarif_laundry (id_tarif, paket_laundry, nama_paket, estimasi_hari, harga_per_kg, aktif) VALUES
 ('TRF001', 'STANDARD_2_HARI', 'Standard 2 Hari', 2, 7000, TRUE),
