@@ -7,6 +7,7 @@ public class Pelanggan extends Pengguna {
     private String idPelanggan;
     private String alamat;
 
+    // Constructor Pelanggan menyimpan data akun dan data khusus pelanggan.
     public Pelanggan(String idPengguna, String username, String namaLengkap, String nomorTelepon,
             String kataSandi, String idPelanggan, String alamat) {
         super(idPengguna, username, namaLengkap, nomorTelepon, kataSandi, Role.PELANGGAN);
@@ -22,6 +23,12 @@ public class Pelanggan extends Pengguna {
         System.out.println("Melihat riwayat pesanan pelanggan " + idPelanggan);
     }
 
+    @Override
+    public String getInformasiPeran() {
+        return "Memantau status, riwayat pesanan, dan notifikasi laundry.";
+    }
+
+    // Getter dan setter digunakan untuk mengakses ID serta alamat pelanggan.
     public String getIdPelanggan() {
         return idPelanggan;
     }

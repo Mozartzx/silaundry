@@ -7,6 +7,7 @@ public class LaporanKeuangan {
     private double totalPendapatan;
     private int jumlahPesananSelesai;
 
+    // Constructor menyimpan hasil rekap untuk periode yang sedang ditampilkan.
     public LaporanKeuangan(String idLaporan, String periodeBulan, double totalPendapatan, int jumlahPesananSelesai) {
         this.idLaporan = idLaporan;
         this.periodeBulan = periodeBulan;
@@ -22,6 +23,7 @@ public class LaporanKeuangan {
         return periodeBulan + " | Pendapatan: Rp " + totalPendapatan + " | Pesanan selesai: " + jumlahPesananSelesai;
     }
 
+    // Getter dipakai dashboard untuk membaca isi laporan.
     public String getIdLaporan() {
         return idLaporan;
     }

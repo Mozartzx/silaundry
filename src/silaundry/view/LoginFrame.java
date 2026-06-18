@@ -23,14 +23,13 @@ import silaundry.controller.PenggunaController;
 import silaundry.model.Pengguna;
 import silaundry.model.enums.Role;
 
-// Halaman awal untuk memilih role, login, mendaftar pelanggan, dan menguji database.
+// Halaman awal untuk memilih role, login, dan mendaftar akun pelanggan.
 public class LoginFrame extends JFrame {
     private final AuthController authController = new AuthController();
     private final PenggunaController penggunaController = new PenggunaController();
     private final JComboBox<Role> roleCombo = new JComboBox<>(Role.values());
-    private final JTextField usernameField = new JTextField("Master", 24);
+    private final JTextField usernameField = new JTextField("masteradmin", 24);
     private final JPasswordField passwordField = new JPasswordField(24);
-    private final JLabel statusLabel = new JLabel("Koneksi database belum diuji");
 
     public LoginFrame() {
         setTitle("SILAUNDRY - Login");
@@ -93,33 +92,12 @@ public class LoginFrame extends JFrame {
     }
 
     private JPanel buildLoginPanel() {
-        // Footer Test DB dipisahkan dari form supaya bukan bagian dari proses login utama.
+        // Panel kanan hanya berisi form karena aplikasi tidak lagi membutuhkan koneksi database.
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(AppTheme.SURFACE);
-        panel.setBorder(BorderFactory.createEmptyBorder(38, 54, 18, 54));
-
-        JPanel footer = new JPanel(new GridBagLayout());
-        footer.setBackground(AppTheme.SURFACE);
-        JButton testButton = AppTheme.secondaryButton("Test DB");
-        testButton.addActionListener(event -> UiUtil.runTask(
-                this,
-                authController::testConnection,
-                statusLabel::setText,
-                "Tidak dapat menguji koneksi database."));
-        statusLabel.setForeground(AppTheme.MUTED);
-        statusLabel.setFont(AppTheme.SMALL_FONT);
-        GridBagConstraints footerGbc = new GridBagConstraints();
-        footerGbc.gridx = 0;
-        footerGbc.weightx = 0;
-        footerGbc.anchor = GridBagConstraints.WEST;
-        footer.add(testButton, footerGbc);
-        footerGbc.gridx = 1;
-        footerGbc.weightx = 1;
-        footerGbc.insets = new Insets(0, 16, 0, 0);
-        footer.add(statusLabel, footerGbc);
+        panel.setBorder(BorderFactory.createEmptyBorder(38, 54, 38, 54));
 
         panel.add(buildForm(), BorderLayout.CENTER);
-        panel.add(footer, BorderLayout.SOUTH);
         return panel;
     }
 
@@ -192,7 +170,7 @@ public class LoginFrame extends JFrame {
         panel.add(registerButton, gbc);
 
         roleCombo.addActionListener(event -> applyRolePreset());
-        roleCombo.setSelectedItem(Role.PEMILIK);
+        roleCombo.setSelectedItem(Role.ADMIN);
         applyRolePreset();
         getRootPane().setDefaultButton(loginButton);
 
@@ -212,11 +190,8 @@ public class LoginFrame extends JFrame {
         if (role == null) {
             usernameField.setText("");
             passwordField.setText("");
-        } else if (role == Role.PEMILIK) {
-            usernameField.setText("Master");
-            passwordField.setText("");
-        } else if (role == Role.KARYAWAN) {
-            usernameField.setText("");
+        } else if (role == Role.ADMIN) {
+            usernameField.setText("masteradmin");
             passwordField.setText("");
         } else {
             usernameField.setText("");
@@ -244,11 +219,11 @@ public class LoginFrame extends JFrame {
             }
             dispose();
             new MainFrame(pengguna).setVisible(true);
-        }, "Tidak bisa login karena koneksi database bermasalah.");
+        }, "Tidak dapat memproses login.");
     }
 
     private void showRegisterDialog() {
-        // Register hanya membuat role pelanggan karena akun karyawan dibuat oleh pemilik.
+        // Register hanya membuat role pelanggan karena admin memakai akun utama.
         JTextField username = new JTextField(18);
         JTextField nama = new JTextField(18);
         JTextField telepon = new JTextField(18);
@@ -312,7 +287,7 @@ public class LoginFrame extends JFrame {
             usernameField.setText(usernameBaru);
             passwordField.setText(rawPassword);
             UiUtil.info(this, "Akun pelanggan berhasil dibuat. Silakan login.");
-        }, "Gagal membuat akun pelanggan. Username mungkin sudah digunakan.");
+        }, "Gagal membuat akun pelanggan.");
     }
 
     private void addRegisterRow(JPanel form, GridBagConstraints gbc, int row, String label, Component field) {

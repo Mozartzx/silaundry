@@ -1,6 +1,6 @@
 package silaundry.model;
 
-// Menampung angka ringkasan yang ditampilkan pada dashboard pemilik.
+// Menampung angka ringkasan yang ditampilkan pada dashboard admin.
 public class DataDasbor {
     private String idDasbor;
     private int totalPesananAktif;
@@ -9,6 +9,7 @@ public class DataDasbor {
     private int totalItem;
     private int totalPelanggan;
 
+    // Constructor menerima hasil perhitungan terbaru dari AdminController.
     public DataDasbor(String idDasbor, int totalPesananAktif, double estimasiPendapatan,
             double pendapatanDiterima, int totalItem, int totalPelanggan) {
         this.idDasbor = idDasbor;
@@ -19,6 +20,7 @@ public class DataDasbor {
         this.totalPelanggan = totalPelanggan;
     }
 
+    // Method ini dapat memperbarui seluruh angka dashboard dalam satu proses.
     public void perbaruiMetrikHarian(int totalPesananAktif, double estimasiPendapatan,
             double pendapatanDiterima, int totalItem, int totalPelanggan) {
         this.totalPesananAktif = totalPesananAktif;
@@ -28,6 +30,7 @@ public class DataDasbor {
         this.totalPelanggan = totalPelanggan;
     }
 
+    // Getter digunakan oleh halaman dashboard untuk menampilkan setiap metrik.
     public String getIdDasbor() {
         return idDasbor;
     }

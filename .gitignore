@@ -1,6 +1,5 @@
 /build/
 /dist/
-lib/*.jar
 *.class
 *.log
 *.tmp

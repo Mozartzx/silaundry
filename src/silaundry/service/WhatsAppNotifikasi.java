@@ -38,10 +38,14 @@ public class WhatsAppNotifikasi implements INotifiable {
         return linkWhatsApp;
     }
 
+    // Nomor lokal 08 atau 8 diubah menjadi format kode negara Indonesia.
     private String normalisasiNomor(String nomor) {
         String digits = nomor == null ? "" : nomor.replaceAll("\\D+", "");
         if (digits.startsWith("0")) {
             return "62" + digits.substring(1);
+        }
+        if (digits.startsWith("8")) {
+            return "62" + digits;
         }
         return digits;
     }

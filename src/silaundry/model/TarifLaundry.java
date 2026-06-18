@@ -11,6 +11,7 @@ public class TarifLaundry {
     private double hargaPerKg;
     private boolean aktif;
 
+    // Constructor menyimpan jenis paket, estimasi, dan harga awal.
     public TarifLaundry(String idTarif, PaketLaundry paketLaundry, String namaPaket, int estimasiHari,
             double hargaPerKg, boolean aktif) {
         this.idTarif = idTarif;
@@ -21,6 +22,7 @@ public class TarifLaundry {
         this.aktif = aktif;
     }
 
+    // Getter dan setter dipakai saat Admin melihat atau mengubah tarif.
     public String getIdTarif() {
         return idTarif;
     }

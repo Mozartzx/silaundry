@@ -15,6 +15,7 @@ public class RiwayatPembayaran {
     private final StatusPembayaran status;
     private final LocalDateTime tanggalBayar;
 
+    // Constructor menggabungkan data pesanan dan pembayaran untuk kebutuhan tabel.
     public RiwayatPembayaran(String idPesanan, String namaPelanggan, LocalDate tanggalPesanan,
             double totalTagihan, String metode, double jumlahBayar, StatusPembayaran status,
             LocalDateTime tanggalBayar) {
@@ -28,6 +29,7 @@ public class RiwayatPembayaran {
         this.tanggalBayar = tanggalBayar;
     }
 
+    // Getter digunakan untuk mengisi setiap kolom pada tabel riwayat pembayaran.
     public String getIdPesanan() {
         return idPesanan;
     }

@@ -1,13 +1,15 @@
 package silaundry.controller;
 
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import silaundry.dao.LaundryDAO;
-import silaundry.dao.TarifDAO;
+import silaundry.data.DataStore;
+import silaundry.model.INotifiable;
 import silaundry.model.ItemPakaian;
 import silaundry.model.Notifikasi;
+import silaundry.model.Pelanggan;
 import silaundry.model.Pembayaran;
 import silaundry.model.Pesanan;
 import silaundry.model.RiwayatPembayaran;
@@ -21,38 +23,49 @@ import silaundry.service.SmartGroupingService;
 import silaundry.service.WhatsAppNotifikasi;
 import silaundry.util.IdGenerator;
 
-// Menangani aturan bisnis utama mulai dari pesanan sampai pembayaran dan notifikasi.
+// Menangani aturan bisnis laundry dengan data yang tersimpan di ArrayList.
 public class LaundryController {
-    private final LaundryDAO laundryDAO = new LaundryDAO();
-    private final TarifDAO tarifDAO = new TarifDAO();
+    private final DataStore dataStore = DataStore.getInstance();
     private final SmartGroupingService smartGroupingService = new SmartGroupingService();
-    private final AppNotifikasi appNotifikasi = new AppNotifikasi();
+    private final INotifiable appNotifikasi = new AppNotifikasi();
 
-    // Memuat seluruh pesanan untuk karyawan dan pemilik.
-    public List<Pesanan> getAllPesanan() throws SQLException {
-        return laundryDAO.findAllPesanan();
+    // Bagian pembacaan data pesanan untuk tabel admin dan pelanggan.
+    public List<Pesanan> getAllPesanan() {
+        List<Pesanan> pesanan = dataStore.getDaftarPesanan();
+        pesanan.sort(Comparator.comparing(Pesanan::getTanggalMasuk)
+                .thenComparing(Pesanan::getIdPesanan)
+                .reversed());
+        return pesanan;
     }
 
-    // Membatasi hasil pesanan berdasarkan pelanggan yang sedang login.
-    public List<Pesanan> getPesananPelanggan(String idPelanggan) throws SQLException {
-        return laundryDAO.findPesananByPelanggan(idPelanggan);
+    public List<Pesanan> getPesananPelanggan(String idPelanggan) {
+        List<Pesanan> hasil = new ArrayList<>();
+        for (Pesanan pesanan : getAllPesanan()) {
+            if (pesanan.getIdPelanggan().equals(idPelanggan)) {
+                hasil.add(pesanan);
+            }
+        }
+        return hasil;
     }
 
-    // Mencari satu pesanan saat view membutuhkan detail lengkap.
-    public Pesanan getPesanan(String idPesanan) throws SQLException {
-        return laundryDAO.findPesananById(idPesanan);
+    public Pesanan getPesanan(String idPesanan) {
+        return dataStore.cariPesanan(idPesanan);
     }
 
-    // Menyediakan paket aktif yang boleh dipilih saat membuat pesanan.
-    public List<TarifLaundry> getTarifAktif() throws SQLException {
-        return tarifDAO.findActive();
+    public List<TarifLaundry> getTarifAktif() {
+        List<TarifLaundry> hasil = new ArrayList<>();
+        for (TarifLaundry tarif : dataStore.getDaftarTarif()) {
+            if (tarif.isAktif()) {
+                hasil.add(tarif);
+            }
+        }
+        return hasil;
     }
 
-    // Membuat pesanan dan menghitung estimasi serta total biaya dari tarif aktif.
-    public Pesanan tambahPesanan(String idPelanggan, String idKaryawan, PaketLaundry paketLaundry,
-            double beratKg, String catatan) throws SQLException {
-        if (idPelanggan == null || idPelanggan.isBlank() || idKaryawan == null || idKaryawan.isBlank()) {
-            throw new IllegalArgumentException("Pelanggan dan karyawan wajib dipilih.");
+    // Pembuatan pesanan memvalidasi input lalu mengambil snapshot tarif yang sedang berlaku.
+    public Pesanan tambahPesanan(String idPelanggan, PaketLaundry paketLaundry, double beratKg, String catatan) {
+        if (idPelanggan == null || idPelanggan.isBlank()) {
+            throw new IllegalArgumentException("Pelanggan wajib dipilih.");
         }
         if (paketLaundry == null) {
             throw new IllegalArgumentException("Paket laundry wajib dipilih.");
@@ -60,14 +73,17 @@ public class LaundryController {
         if (beratKg <= 0) {
             throw new IllegalArgumentException("Berat laundry harus lebih dari 0 kg.");
         }
-        TarifLaundry tarif = tarifDAO.findByPaket(paketLaundry);
-        if (tarif == null) {
-            throw new SQLException("Tarif paket " + paketLaundry.getDisplayName() + " belum tersedia.");
+        Pelanggan pelanggan = dataStore.cariPelanggan(idPelanggan);
+        if (pelanggan == null) {
+            throw new IllegalArgumentException("Pelanggan tidak ditemukan.");
+        }
+        TarifLaundry tarif = dataStore.cariTarif(paketLaundry);
+        if (tarif == null || !tarif.isAktif()) {
+            throw new IllegalArgumentException("Tarif paket belum tersedia.");
         }
         Pesanan pesanan = new Pesanan(
                 IdGenerator.generate("ORD"),
                 idPelanggan,
-                idKaryawan,
                 LocalDate.now(),
                 LocalDate.now().plusDays(tarif.getEstimasiHari()),
                 StatusPesanan.BARU,
@@ -75,17 +91,18 @@ public class LaundryController {
                 beratKg,
                 tarif.getHargaPerKg(),
                 tarif.hitungTotal(beratKg),
-                catatan);
-        laundryDAO.createPesanan(pesanan);
+                catatan == null ? "" : catatan.trim());
+        pesanan.setNamaPelanggan(pelanggan.getNamaLengkap());
+        dataStore.tambahPesanan(pesanan);
         return pesanan;
     }
 
-    // Memastikan perpindahan status valid sebelum disimpan bersama notifikasinya.
-    public boolean updateStatus(String idPesanan, StatusPesanan statusBaru) throws SQLException {
+    // Perubahan status harus mengikuti urutan proses laundry pada enum StatusPesanan.
+    public boolean updateStatus(String idPesanan, StatusPesanan statusBaru) {
         if (statusBaru == null) {
             throw new IllegalArgumentException("Status tujuan wajib dipilih.");
         }
-        Pesanan pesanan = laundryDAO.findPesananById(idPesanan);
+        Pesanan pesanan = dataStore.cariPesanan(idPesanan);
         if (pesanan == null) {
             throw new IllegalArgumentException("Pesanan tidak ditemukan.");
         }
@@ -98,38 +115,39 @@ public class LaundryController {
             throw new IllegalArgumentException("Status " + statusLama.getDisplayName()
                     + " tidak dapat langsung diubah menjadi " + statusBaru.getDisplayName() + ".");
         }
-        if (statusBaru.membutuhkanItemPakaian() && laundryDAO.countItemsByPesanan(idPesanan) == 0) {
+        if (statusBaru.membutuhkanItemPakaian() && getItemsByPesanan(idPesanan).isEmpty()) {
             throw new IllegalArgumentException("Catat minimal satu item pakaian sebelum proses pencucian.");
         }
         pesanan.setStatusPesanan(statusBaru);
-        Notifikasi notifikasi = buatNotifikasiStatus(pesanan);
-        laundryDAO.updateStatusDanNotifikasi(idPesanan, statusLama, statusBaru, notifikasi);
+        kirimNotifikasiStatus(pesanan);
         return true;
     }
 
-    // Pembatalan ditolak bila pesanan sudah mempunyai pembayaran.
-    public boolean batalkanPesanan(String idPesanan) throws SQLException {
-        Pembayaran pembayaran = laundryDAO.findPembayaranByPesanan(idPesanan);
+    public boolean batalkanPesanan(String idPesanan) {
+        Pembayaran pembayaran = getPembayaran(idPesanan);
         if (pembayaran != null && pembayaran.getJumlah() > 0) {
-            throw new IllegalArgumentException(
-                    "Pesanan yang sudah memiliki pembayaran tidak dapat dibatalkan sebelum proses pengembalian dana.");
+            throw new IllegalArgumentException("Pesanan yang sudah dibayar tidak dapat dibatalkan.");
         }
         return updateStatus(idPesanan, StatusPesanan.DIBATALKAN);
     }
 
-    // Mengambil semua item untuk kebutuhan pemeriksaan data.
-    public List<ItemPakaian> getAllItems() throws SQLException {
-        return laundryDAO.findAllItems();
+    // Bagian item pakaian menangani pencatatan, pengelompokan warna, dan penghapusan.
+    public List<ItemPakaian> getAllItems() {
+        return dataStore.getDaftarItem();
     }
 
-    // Mengambil pakaian yang hanya terhubung dengan pesanan terpilih.
-    public List<ItemPakaian> getItemsByPesanan(String idPesanan) throws SQLException {
-        return laundryDAO.findItemsByPesanan(idPesanan);
+    public List<ItemPakaian> getItemsByPesanan(String idPesanan) {
+        List<ItemPakaian> hasil = new ArrayList<>();
+        for (ItemPakaian item : dataStore.getDaftarItem()) {
+            if (item.getIdPesanan().equals(idPesanan)) {
+                hasil.add(item);
+            }
+        }
+        return hasil;
     }
 
-    // Mencatat ciri pakaian selama proses pencucian belum dimulai.
     public void tambahItem(String idPesanan, String jenisPakaian, KategoriWarna kategoriWarna,
-            String kondisiAwal, String deskripsiDetail) throws SQLException {
+            String kondisiAwal, String deskripsiDetail) {
         Pesanan pesanan = pesananDapatDiubah(idPesanan);
         if (jenisPakaian == null || jenisPakaian.isBlank() || kategoriWarna == null
                 || kondisiAwal == null || kondisiAwal.isBlank()
@@ -144,11 +162,10 @@ public class LaundryController {
                 kondisiAwal.trim(),
                 deskripsiDetail.trim(),
                 SmartGroupingService.BELUM_DIKELOMPOKKAN);
-        laundryDAO.createItem(item);
+        dataStore.tambahItem(item);
     }
 
-    // Menjalankan pengelompokan warna untuk seluruh item dalam satu pesanan.
-    public int jalankanSmartGrouping(String idPesanan) throws SQLException {
+    public int jalankanSmartGrouping(String idPesanan) {
         pesananDapatDiubah(idPesanan);
         int jumlahItem = smartGroupingService.kelompokkanItem(idPesanan);
         if (jumlahItem == 0) {
@@ -157,100 +174,135 @@ public class LaundryController {
         return jumlahItem;
     }
 
-    // Menghapus item hanya ketika pesanan masih boleh diedit.
-    public void hapusItem(String idItem) throws SQLException {
-        ItemPakaian item = laundryDAO.findItemById(idItem);
+    public void hapusItem(String idItem) {
+        ItemPakaian item = dataStore.cariItem(idItem);
         if (item == null) {
             throw new IllegalArgumentException("Item pakaian tidak ditemukan.");
         }
         pesananDapatDiubah(item.getIdPesanan());
-        laundryDAO.deleteItem(idItem);
+        dataStore.hapusItem(idItem);
     }
 
-    // Membaca pembayaran milik satu pesanan.
-    public Pembayaran getPembayaran(String idPesanan) throws SQLException {
-        return laundryDAO.findPembayaranByPesanan(idPesanan);
+    public Pembayaran getPembayaran(String idPesanan) {
+        return dataStore.cariPembayaran(idPesanan);
     }
 
-    // Menyediakan pilihan pesanan yang masih mempunyai tagihan.
-    public List<Pesanan> getPesananBelumBayar() throws SQLException {
-        return laundryDAO.findPesananBelumBayar();
+    // Bagian pembayaran hanya menampilkan pesanan yang belum lunas.
+    public List<Pesanan> getPesananBelumBayar() {
+        List<Pesanan> hasil = new ArrayList<>();
+        for (Pesanan pesanan : getAllPesanan()) {
+            Pembayaran pembayaran = getPembayaran(pesanan.getIdPesanan());
+            boolean belumLunas = pembayaran == null || pembayaran.getStatus() != StatusPembayaran.LUNAS;
+            if (pesanan.getStatusPesanan().dapatMenerimaPembayaran() && belumLunas) {
+                hasil.add(pesanan);
+            }
+        }
+        return hasil;
     }
 
-    // Menyediakan gabungan tagihan belum bayar dan pembayaran yang sudah lunas.
-    public List<RiwayatPembayaran> getRiwayatPembayaran() throws SQLException {
-        return laundryDAO.findRiwayatPembayaran();
+    public List<RiwayatPembayaran> getRiwayatPembayaran() {
+        List<RiwayatPembayaran> hasil = new ArrayList<>();
+        for (Pesanan pesanan : getAllPesanan()) {
+            if (pesanan.getStatusPesanan() == StatusPesanan.DIBATALKAN) {
+                continue;
+            }
+            Pembayaran pembayaran = getPembayaran(pesanan.getIdPesanan());
+            StatusPembayaran status = pembayaran == null
+                    ? StatusPembayaran.BELUM_BAYAR
+                    : pembayaran.getStatus();
+            hasil.add(new RiwayatPembayaran(
+                    pesanan.getIdPesanan(),
+                    pesanan.getNamaPelanggan(),
+                    pesanan.getTanggalMasuk(),
+                    pesanan.getTotalBiaya(),
+                    pembayaran == null ? null : pembayaran.getMetode(),
+                    pembayaran == null ? 0 : pembayaran.getJumlah(),
+                    status,
+                    pembayaran == null ? null : pembayaran.getTanggalBayar()));
+        }
+        hasil.sort(Comparator
+                .comparing((RiwayatPembayaran riwayat) -> riwayat.getStatus() == StatusPembayaran.LUNAS)
+                .thenComparing(RiwayatPembayaran::getTanggalPesanan, Comparator.reverseOrder()));
+        return hasil;
     }
 
-    // Mencatat pelunasan sesuai total pesanan dan metode yang dipilih karyawan.
-    public Pembayaran catatPembayaran(String idPesanan, String metode) throws SQLException {
-        Pesanan pesanan = laundryDAO.findPesananById(idPesanan);
+    public Pembayaran catatPembayaran(String idPesanan, String metode) {
+        Pesanan pesanan = dataStore.cariPesanan(idPesanan);
         if (pesanan == null) {
             throw new IllegalArgumentException("Pesanan tidak ditemukan.");
         }
         if (metode == null || metode.isBlank()) {
-            throw new IllegalArgumentException("Metode pembayaran wajib diisi.");
+            throw new IllegalArgumentException("Metode pembayaran wajib dipilih.");
         }
         if (!pesanan.getStatusPesanan().dapatMenerimaPembayaran()) {
             throw new IllegalArgumentException("Pesanan yang dibatalkan tidak dapat menerima pembayaran.");
         }
-        Pembayaran existing = laundryDAO.findPembayaranByPesanan(idPesanan);
+        Pembayaran existing = getPembayaran(idPesanan);
         if (existing != null && existing.getStatus() == StatusPembayaran.LUNAS) {
             throw new IllegalArgumentException("Pesanan ini sudah lunas.");
         }
         Pembayaran pembayaran = new Pembayaran(
                 existing == null ? IdGenerator.generate("PAY") : existing.getIdPembayaran(),
-                idPesanan, metode.trim(), pesanan.getTotalBiaya(),
+                idPesanan,
+                metode.trim(),
+                pesanan.getTotalBiaya(),
                 StatusPembayaran.BELUM_BAYAR);
         pembayaran.prosesPembayaran();
-        // Record lama yang masih Belum Bayar diperbarui, sedangkan tagihan baru dibuatkan record baru.
-        if (existing == null) {
-            laundryDAO.createPembayaran(pembayaran);
-        } else {
-            laundryDAO.updatePembayaran(pembayaran);
-        }
+        dataStore.simpanPembayaran(pembayaran);
         return pembayaran;
     }
 
-    // Mengambil seluruh notifikasi yang dimiliki pelanggan.
-    public List<Notifikasi> getNotifikasiPelanggan(String idPelanggan) throws SQLException {
-        return laundryDAO.findNotifikasiByPelanggan(idPelanggan);
+    // Bagian notifikasi membatasi pesan agar hanya dapat dibaca oleh pemilik pesanan.
+    public List<Notifikasi> getNotifikasiPelanggan(String idPelanggan) {
+        List<Notifikasi> hasil = new ArrayList<>();
+        for (Notifikasi notifikasi : dataStore.getDaftarNotifikasi()) {
+            Pesanan pesanan = dataStore.cariPesanan(notifikasi.getIdPesanan());
+            if (pesanan != null && pesanan.getIdPelanggan().equals(idPelanggan)) {
+                hasil.add(notifikasi);
+            }
+        }
+        hasil.sort(Comparator.comparing(Notifikasi::getTanggalKirim).reversed());
+        return hasil;
     }
 
-    // Mengubah semua notifikasi pelanggan menjadi sudah dibaca.
-    public int tandaiSemuaDibaca(String idPelanggan) throws SQLException {
-        return laundryDAO.markAllNotifikasiRead(idPelanggan);
+    public int tandaiSemuaDibaca(String idPelanggan) {
+        int jumlah = 0;
+        for (Notifikasi notifikasi : getNotifikasiPelanggan(idPelanggan)) {
+            if (!notifikasi.isSudahDibaca()) {
+                notifikasi.setSudahDibaca(true);
+                jumlah++;
+            }
+        }
+        return jumlah;
     }
 
-    // Menyimpan notifikasi aplikasi bila pesan dengan isi sama belum pernah dibuat.
-    public void kirimNotifikasiStatus(Pesanan pesanan) throws SQLException {
+    public void kirimNotifikasiStatus(Pesanan pesanan) {
         Notifikasi notifikasi = buatNotifikasiStatus(pesanan);
         if (notifikasi != null
-                && !laundryDAO.notifikasiExists(notifikasi.getIdPesanan(), notifikasi.getPesan())) {
+                && !dataStore.notifikasiSudahAda(notifikasi.getIdPesanan(), notifikasi.getPesan())) {
             appNotifikasi.kirimNotifikasi(notifikasi);
         }
     }
 
-    // Membentuk link WhatsApp dari nomor pelanggan dan template status akhir.
-    public String buatLinkWhatsApp(String idPesanan) throws SQLException {
-        Pesanan pesanan = laundryDAO.findPesananById(idPesanan);
+    public String buatLinkWhatsApp(String idPesanan) {
+        Pesanan pesanan = dataStore.cariPesanan(idPesanan);
         if (pesanan == null) {
-            throw new SQLException("Pesanan tidak ditemukan.");
+            throw new IllegalArgumentException("Pesanan tidak ditemukan.");
         }
         if (!perluNotifikasi(pesanan.getStatusPesanan())) {
             throw new IllegalArgumentException(
                     "Template WhatsApp tersedia saat pesanan Siap Diambil atau Selesai.");
         }
-        String nomorTelepon = laundryDAO.findNomorTeleponByPesanan(idPesanan);
-        if (nomorTelepon == null || nomorTelepon.isBlank()) {
-            throw new SQLException("Nomor telepon pelanggan belum tersedia.");
+        Pelanggan pelanggan = dataStore.cariPelanggan(pesanan.getIdPelanggan());
+        if (pelanggan == null || pelanggan.getNomorTelepon().isBlank()) {
+            throw new IllegalArgumentException("Nomor telepon pelanggan belum tersedia.");
         }
-        WhatsAppNotifikasi whatsapp = new WhatsAppNotifikasi(nomorTelepon);
+        WhatsAppNotifikasi whatsapp = new WhatsAppNotifikasi(pelanggan.getNomorTelepon());
         whatsapp.kirimNotifikasi(buatNotifikasiStatus(pesanan));
         return whatsapp.getLinkWhatsApp();
     }
 
-    // Notifikasi otomatis hanya dibuat untuk status siap diambil atau selesai.
+    // Helper berikut membentuk isi notifikasi berdasarkan status pesanan.
     public Notifikasi buatNotifikasiStatus(Pesanan pesanan) {
         if (!perluNotifikasi(pesanan.getStatusPesanan())) {
             return null;
@@ -263,12 +315,11 @@ public class LaundryController {
                 false);
     }
 
-    // Pemeriksaan bersama ini menjaga item tidak berubah setelah pencucian dimulai.
-    private Pesanan pesananDapatDiubah(String idPesanan) throws SQLException {
+    private Pesanan pesananDapatDiubah(String idPesanan) {
         if (idPesanan == null || idPesanan.isBlank()) {
             throw new IllegalArgumentException("Pesanan wajib dipilih.");
         }
-        Pesanan pesanan = laundryDAO.findPesananById(idPesanan.trim());
+        Pesanan pesanan = dataStore.cariPesanan(idPesanan.trim());
         if (pesanan == null) {
             throw new IllegalArgumentException("Pesanan tidak ditemukan.");
         }
@@ -279,21 +330,15 @@ public class LaundryController {
         return pesanan;
     }
 
-    // Menyusun kalimat notifikasi berdasarkan status terakhir pesanan.
     private String buatPesanStatus(Pesanan pesanan) {
         if (pesanan.getStatusPesanan() == StatusPesanan.SIAP_DIAMBIL) {
             return "Halo " + pesanan.getNamaPelanggan() + ", pesanan laundry " + pesanan.getIdPesanan()
                     + " sudah siap diambil. Terima kasih - SILAUNDRY";
         }
-        if (pesanan.getStatusPesanan() == StatusPesanan.SELESAI) {
-            return "Halo " + pesanan.getNamaPelanggan() + ", pesanan laundry " + pesanan.getIdPesanan()
-                    + " sudah selesai. Terima kasih - SILAUNDRY";
-        }
-        return "Halo " + pesanan.getNamaPelanggan() + ", status pesanan laundry " + pesanan.getIdPesanan()
-                + " saat ini: " + pesanan.getStatusPesanan().getDisplayName() + ". Terima kasih - SILAUNDRY";
+        return "Halo " + pesanan.getNamaPelanggan() + ", pesanan laundry " + pesanan.getIdPesanan()
+                + " sudah selesai. Terima kasih - SILAUNDRY";
     }
 
-    // Menentukan status yang memang perlu diberitahukan kepada pelanggan.
     private boolean perluNotifikasi(StatusPesanan statusPesanan) {
         return statusPesanan == StatusPesanan.SIAP_DIAMBIL || statusPesanan == StatusPesanan.SELESAI;
     }

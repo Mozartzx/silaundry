@@ -44,6 +44,7 @@ public final class AppTheme {
     private AppTheme() {
     }
 
+    // Pengaturan global membuat font dasar semua komponen terlihat konsisten.
     public static void applyGlobalLook() {
         UIManager.put("Panel.background", BACKGROUND);
         UIManager.put("Label.font", BODY_FONT);
@@ -102,6 +103,7 @@ public final class AppTheme {
         return label;
     }
 
+    // Bagian tombol menyediakan gaya utama, sekunder, bahaya, dan sidebar.
     public static JButton primaryButton(String text) {
         JButton button = new JButton(text);
         button.setFont(BODY_FONT.deriveFont(Font.BOLD));
@@ -222,6 +224,7 @@ public final class AppTheme {
         return brightness >= 180;
     }
 
+    // Bagian form membantu menyusun label dan input dengan GridBagLayout.
     public static JPanel formGrid() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(SURFACE);
@@ -276,6 +279,7 @@ public final class AppTheme {
         return panel;
     }
 
+    // Bagian input menyamakan tampilan text field, text area, combo box, dan spinner.
     public static void styleTextField(JTextField field) {
         field.setFont(BODY_FONT);
         field.setForeground(TEXT);

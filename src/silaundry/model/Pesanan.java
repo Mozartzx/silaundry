@@ -11,8 +11,6 @@ public class Pesanan {
     private String idPesanan;
     private String idPelanggan;
     private String namaPelanggan;
-    private String idKaryawan;
-    private String namaKaryawan;
     private LocalDate tanggalMasuk;
     private LocalDate estimasiSelesai;
     private StatusPesanan statusPesanan;
@@ -23,12 +21,12 @@ public class Pesanan {
     private String catatan;
     private final List<ItemPakaian> daftarItem = new ArrayList<>();
 
-    public Pesanan(String idPesanan, String idPelanggan, String idKaryawan, LocalDate tanggalMasuk,
-            LocalDate estimasiSelesai, StatusPesanan statusPesanan, PaketLaundry paketLaundry, double beratKg,
-            double hargaPerKg, double totalBiaya, String catatan) {
+    // Constructor menyimpan data transaksi dan menghitung total bila belum diberikan.
+    public Pesanan(String idPesanan, String idPelanggan, LocalDate tanggalMasuk, LocalDate estimasiSelesai,
+            StatusPesanan statusPesanan, PaketLaundry paketLaundry, double beratKg, double hargaPerKg,
+            double totalBiaya, String catatan) {
         this.idPesanan = idPesanan;
         this.idPelanggan = idPelanggan;
-        this.idKaryawan = idKaryawan;
         this.tanggalMasuk = tanggalMasuk;
         this.estimasiSelesai = estimasiSelesai;
         this.statusPesanan = statusPesanan;
@@ -53,6 +51,7 @@ public class Pesanan {
         return totalBiaya;
     }
 
+    // Getter dan setter berikut dipakai controller serta tabel pada GUI.
     public String getIdPesanan() {
         return idPesanan;
     }
@@ -75,22 +74,6 @@ public class Pesanan {
 
     public void setNamaPelanggan(String namaPelanggan) {
         this.namaPelanggan = namaPelanggan;
-    }
-
-    public String getIdKaryawan() {
-        return idKaryawan;
-    }
-
-    public void setIdKaryawan(String idKaryawan) {
-        this.idKaryawan = idKaryawan;
-    }
-
-    public String getNamaKaryawan() {
-        return namaKaryawan;
-    }
-
-    public void setNamaKaryawan(String namaKaryawan) {
-        this.namaKaryawan = namaKaryawan;
     }
 
     public LocalDate getTanggalMasuk() {

@@ -12,6 +12,7 @@ public class ItemPakaian {
     private String deskripsiDetail;
     private String labelSmartGroup;
 
+    // Constructor menyimpan ciri pakaian agar mudah dibedakan dari pakaian lain.
     public ItemPakaian(String idItem, String idPesanan, String jenisPakaian, KategoriWarna kategoriWarna,
             String kondisiAwal, String deskripsiDetail, String labelSmartGroup) {
         this.idItem = idItem;
@@ -28,6 +29,7 @@ public class ItemPakaian {
         this.labelSmartGroup = kategoriWarna.getSmartGroupLabel();
     }
 
+    // Getter dan setter digunakan saat item ditampilkan atau diperbarui.
     public String getIdItem() {
         return idItem;
     }

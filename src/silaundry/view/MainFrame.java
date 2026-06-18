@@ -16,9 +16,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import silaundry.model.Karyawan;
+import silaundry.model.Admin;
 import silaundry.model.Pelanggan;
-import silaundry.model.Pemilik;
 import silaundry.model.Pengguna;
 
 // Kerangka dashboard yang membentuk sidebar dan halaman sesuai role pengguna.
@@ -51,20 +50,14 @@ public class MainFrame extends JFrame {
         if (pengguna instanceof Pelanggan pelanggan) {
             addRoute("Status Laundry", "Pantau pesanan dan riwayat", new PelangganPanel(pelanggan));
         }
-        if (pengguna instanceof Karyawan karyawan) {
-            addRoute("Pesanan", "Tambah dan update pesanan",
-                    new KaryawanPanel(karyawan, KaryawanPanel.Page.PESANAN));
+        if (pengguna instanceof Admin admin) {
+            addRoute("Dashboard", "Ringkasan usaha", new AdminPanel(admin, AdminPanel.Page.DASHBOARD));
+            addRoute("Pesanan", "Tambah dan update pesanan", new AdminPanel(admin, AdminPanel.Page.PESANAN));
             addRoute("Item Pakaian", "Catat ciri dan kelompok warna",
-                    new KaryawanPanel(karyawan, KaryawanPanel.Page.ITEM_PAKAIAN));
-            addRoute("Pembayaran", "Catat pembayaran lunas",
-                    new KaryawanPanel(karyawan, KaryawanPanel.Page.PEMBAYARAN));
-        }
-        if (pengguna instanceof Pemilik) {
-            addRoute("Dashboard", "Ringkasan usaha", new PemilikPanel(PemilikPanel.Page.DASHBOARD));
-            addRoute("Pantau Pesanan", "Semua transaksi laundry", new PemilikPanel(PemilikPanel.Page.PESANAN));
-            addRoute("Daftar Pelanggan", "Lihat pelanggan terdaftar", new PemilikPanel(PemilikPanel.Page.PELANGGAN));
-            addRoute("Kelola Karyawan", "Tambah dan hapus akun", new PemilikPanel(PemilikPanel.Page.KARYAWAN));
-            addRoute("Tarif Laundry", "Atur harga per kilo", new PemilikPanel(PemilikPanel.Page.TARIF));
+                    new AdminPanel(admin, AdminPanel.Page.ITEM_PAKAIAN));
+            addRoute("Pembayaran", "Catat pembayaran lunas", new AdminPanel(admin, AdminPanel.Page.PEMBAYARAN));
+            addRoute("Daftar Pelanggan", "Lihat pelanggan terdaftar", new AdminPanel(admin, AdminPanel.Page.PELANGGAN));
+            addRoute("Tarif Laundry", "Atur harga per kilo", new AdminPanel(admin, AdminPanel.Page.TARIF));
         }
         selectFirstRoute();
         return shell;
@@ -90,6 +83,7 @@ public class MainFrame extends JFrame {
         JLabel userLabel = new JLabel(pengguna.getNamaLengkap());
         userLabel.setFont(AppTheme.BODY_FONT);
         userLabel.setForeground(new Color(235, 244, 246));
+        userLabel.setToolTipText(pengguna.getInformasiPeran());
         brand.add(appLabel);
         brand.add(Box.createVerticalStrut(4));
         brand.add(roleLabel);
@@ -123,9 +117,7 @@ public class MainFrame extends JFrame {
         button.addActionListener(event -> {
             cardLayout.show(contentPanel, title);
             setActiveButton(button);
-            if (content instanceof KaryawanPanel panel) {
-                panel.refreshData();
-            } else if (content instanceof PemilikPanel panel) {
+            if (content instanceof AdminPanel panel) {
                 panel.refreshData();
             }
         });

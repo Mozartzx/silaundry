@@ -1,208 +1,79 @@
 # SILAUNDRY - Sistem Informasi Manajemen Laundry
 
-![Java](https://img.shields.io/badge/Java-ED8B00?style=flat&logo=java&logoColor=white)
-![NetBeans](https://img.shields.io/badge/NetBeans-1B6AC6?style=flat&logo=apachenetbeanside&logoColor=white)
-![OOP](https://img.shields.io/badge/Paradigm-OOP-blue)
+SILAUNDRY adalah aplikasi desktop Java Swing untuk membantu simulasi operasional laundry. Project ini berfokus pada penerapan materi Pemrograman Berorientasi Objek dan menggunakan `ArrayList` sebagai penyimpanan sementara.
 
-Sistem Informasi Manajemen Laundry berbasis desktop untuk UMKM dengan fitur **Monitoring Pesanan** dan **Smart Grouping**.
+Program tidak memakai database. Seluruh akun pelanggan, pesanan, item pakaian, pembayaran, dan notifikasi akan kembali kosong ketika aplikasi ditutup.
 
-## 📋 Deskripsi Proyek
+## Role Pengguna
 
-SILAUNDRY adalah aplikasi desktop Java yang dirancang untuk mengatasi masalah operasional utama usaha laundry UMKM: **tingginya risiko pakaian pelanggan yang tertukar**. Meskipun klaim layanan "1 mesin 1 pelanggan", keterbatasan kapasitas memaksa pencampuran pakaian dari berbagai pelanggan, yang mengakibatkan kerugian materi dan menurunnya kepercayaan pelanggan.
+### Admin
 
-### 🎯 Solusi Teknis Utama
+- Login menggunakan akun awal.
+- Melihat dashboard dan laporan.
+- Melihat pelanggan yang sudah register.
+- Membuat dan mengubah status pesanan.
+- Mencatat detail pakaian.
+- Menjalankan smart grouping.
+- Mencatat pembayaran.
+- Mengatur tarif laundry.
+- Membuat template link WhatsApp.
 
-1. **Monitoring Pesanan**
-   - Pelanggan memantau pesanan aktif dan riwayat miliknya
-   - Pemilik memantau seluruh pesanan melalui filter status
-   - Memastikan tidak ada identitas pakaian yang hilang meski dicampur dalam satu mesin
+### Pelanggan
 
-2. **Smart Grouping**
-   - Sortir otomatis cucian berdasarkan kategori warna
-   - Rekomendasi pengelompokan untuk mencegah kerusakan/kelunturan
-   - Optimasi proses pencucian massal
+- Membuat akun melalui menu register.
+- Login menggunakan akun yang baru dibuat.
+- Melihat pesanan aktif miliknya.
+- Melihat riwayat pesanan.
+- Melihat dan membaca notifikasi.
 
-## 🏗️ Domain & Ruang Lingkup
+## Akun Awal
 
-**Domain**: Sistem Informasi Manajemen Operasional Jasa  
-**Fokus**: Manajemen alur kerja dan pelacakan aset/inventori sementara (pakaian pelanggan) dalam skala UMKM
+| Role | Nama | Username | Password |
+|---|---|---|---|
+| Admin | Master Admin | `masteradmin` | `123456` |
 
-### Ruang Lingkup Sistem
+Saat aplikasi pertama kali dijalankan, hanya akun Admin tersebut yang tersedia. Akun pelanggan ditambahkan ke `ArrayList` melalui menu register.
 
-- ✅ **User Management**: Owner, Karyawan, Pelanggan
-- ✅ **Order Management**: CRUD pesanan, pencatatan jenis pakaian, kalkulasi harga, dan status proses
-- ✅ **Smart Grouping**: Logika back-end untuk sortir otomatis berdasarkan warna
-- ✅ **Monitoring**: Akses informasi status bagi pelanggan dan performa bagi owner
+## Penyimpanan Data
 
-### Batasan Sistem
+Class `DataStore` menyimpan collection berikut:
 
-- ❌ Tidak terintegrasi dengan hardware mesin cuci fisik
-- ❌ Tidak mencakup modul manajemen kurir/pengiriman
-- ❌ Tidak menyertakan manajemen gaji dan inventori bahan baku
-- ❌ Fokus pada pemantauan transaksi, bukan payment gateway
-
-## 🏛️ Core Class Diagram
-
-```mermaid
-classDiagram
-direction LR
-
-class Pengguna {
-  <<abstract>>
-  -String idPengguna
-  -String username
-  -String namaLengkap
-  -String nomorTelepon
-  -String kataSandi
-  -String role
-  +login() void
-  +logout() void
-}
-
-class Pelanggan {
-  -String idPelanggan
-  -String alamat
-  +lacakStatusCucian() void
-  +lihatRiwayatPesanan() void
-}
-
-class Karyawan {
-  -String idKaryawan
-  -String shiftKerja
-  +buatPesananBaru() void
-  +perbaruiStatusPesanan() void
-  +rekamDataPakaian() void
-  +jalankanSmartGrouping() void
-}
-
-class Pemilik {
-  -String idPemilik
-  +pantauPesanan() void
-  +tinjauDasborAnalitik() void
-  +unduhLaporanKeuangan() void
-  +kelolaDataKaryawan() void
-  +aturTarifLaundry() void
-}
-
-class TarifLaundry {
-  -String idTarif
-  -String paketLaundry
-  -String namaPaket
-  -int estimasiHari
-  -double hargaPerKg
-  -boolean aktif
-  +hitungTotal(beratKg: double) double
-  +updateHarga(hargaBaru: double) void
-}
-
-class Pesanan {
-  -String idPesanan
-  -String idPelanggan
-  -String idKaryawan
-  -LocalDate tanggalMasuk
-  -LocalDate estimasiSelesai
-  -String statusPesanan
-  -String paketLaundry
-  -double beratKg
-  -double hargaPerKg
-  -double totalBiaya
-  -List~ItemPakaian~ daftarItem
-  +tambahItemPakaian(item: ItemPakaian) void
-  +cariItem(keyword: String) ItemPakaian
-  +kalkulasiTotalBiaya() double
-}
-
-class ItemPakaian {
-  -String idItem
-  -String idPesanan
-  -String jenisPakaian
-  -String kategoriWarna
-  -String kondisiAwal
-  -String deskripsiDetail
-  -String labelSmartGroup
-  -String kodeQR
-  +terapkanGrupWarna() void
-  +generateKodeQR() void
-}
-
-class Pembayaran {
-  -String idPembayaran
-  -String idPesanan
-  -String metode
-  -double jumlah
-  -String status
-  +prosesPembayaran() void
-  +konfirmasiPembayaran() void
-}
-
-class DetailPembayaran {
-  -String idDetail
-  -String idPembayaran
-  -LocalDateTime waktuBayar
-  -String keterangan
-  +generateStruk() void
-  +formatStruk() String
-}
-
-class LaporanKeuangan {
-  -String idLaporan
-  -String periodeBulan
-  -double totalPendapatan
-  -int jumlahPesananSelesai
-  +cetakDataLaporan() void
-  +formatDataLaporan() String
-}
-
-class Notifikasi {
-  -String idNotifikasi
-  -String idPesanan
-  -String pesan
-  -LocalDateTime tanggalKirim
-  -boolean sudahDibaca
-  +tandaiSudahDibaca() void
-}
-
-class INotifiable {
-  <<interface>>
-  +kirimNotifikasi(notifikasi: Notifikasi) void
-}
-
-class AppNotifikasi {
-  -List~Notifikasi~ daftarNotifikasi
-  +kirimNotifikasi(notifikasi: Notifikasi) void
-  +tampilkanDiAplikasi() void
-}
-
-class WhatsAppNotifikasi {
-  -String nomorTujuan
-  -String linkWhatsApp
-  +kirimNotifikasi(notifikasi: Notifikasi) void
-  +generateLinkWhatsApp(pesan: String) String
-}
-
-Pengguna <|-- Pelanggan
-Pengguna <|-- Karyawan
-Pengguna <|-- Pemilik
-INotifiable <|.. AppNotifikasi
-INotifiable <|.. WhatsAppNotifikasi
-Pelanggan "1" --> "0..*" Pesanan : memantau
-Karyawan "1" --> "0..*" Pesanan : menginput
-Pemilik --> Pesanan : memantau
-Pemilik --> TarifLaundry : mengatur
-Pesanan "1" *-- "1..*" ItemPakaian : berisi
-Pesanan --> TarifLaundry : memakai harga
-Pesanan --> Pembayaran : dibayar
-Pembayaran --> DetailPembayaran : detail
-Pesanan --> Notifikasi : menghasilkan
-AppNotifikasi --> Notifikasi : menyimpan
-WhatsAppNotifikasi --> Notifikasi : template
-Pemilik --> LaporanKeuangan : melihat
+```java
+ArrayList<Pengguna> daftarPengguna;
+ArrayList<Pelanggan> daftarPelanggan;
+ArrayList<Pesanan> daftarPesanan;
+ArrayList<ItemPakaian> daftarItem;
+ArrayList<Pembayaran> daftarPembayaran;
+ArrayList<Notifikasi> daftarNotifikasi;
+ArrayList<TarifLaundry> daftarTarif;
 ```
 
+`DataStore` dibuat sebagai singleton agar semua controller dan halaman GUI memakai objek data yang sama selama aplikasi berjalan.
 
-### Final Class Diagram
+## Materi OOP
 
-Diagram ini merepresentasikan struktur implementasi SiLaundry setelah penyederhanaan tingkat menengah. Getter, setter, constructor, dan method helper rutin tidak seluruhnya ditampilkan agar relasi utama tetap terbaca.
+| Materi | Implementasi |
+|---|---|
+| Abstract class | `Pengguna` |
+| Inheritance | `Admin` dan `Pelanggan` mewarisi `Pengguna` |
+| Abstract method | `Pengguna.getInformasiPeran()` |
+| Overriding | Implementasi `getInformasiPeran()`, `kirimNotifikasi()`, dan `toString()` |
+| Overloading | Constructor `Pembayaran` dan method `SmartGroupingService.kelompokkanItem()` |
+| Interface | `INotifiable` |
+| Polymorphism | `INotifiable` dapat berisi `AppNotifikasi` atau `WhatsAppNotifikasi` |
+| Encapsulation | Atribut private dengan getter dan setter |
+| Collection | Data disimpan dalam beberapa `ArrayList` |
+| Composition | `Pesanan` memiliki daftar `ItemPakaian` |
+| Association | Pesanan terhubung dengan Pelanggan |
+| Enum | Role, status pesanan, paket, warna, dan status pembayaran |
+| Exception handling | Validasi input menggunakan `IllegalArgumentException` |
+| GUI | Swing, event listener, table, form, sidebar, dan dialog |
+
+Project mempunyai 27 class utama, 2 interface, dan 6 enum sehingga memenuhi ketentuan minimal 15 class.
+
+## Core Class Diagram
+
+Diagram core menampilkan class domain yang paling penting untuk pembahasan OOP.
 
 ```mermaid
 classDiagram
@@ -218,6 +89,14 @@ class Pengguna {
   -Role role
   +login() void
   +logout() void
+  +getInformasiPeran()* String
+}
+
+class Admin {
+  +kelolaPesanan() void
+  +kelolaTarif() void
+  +lihatDashboard() void
+  +getInformasiPeran() String
 }
 
 class Pelanggan {
@@ -225,64 +104,37 @@ class Pelanggan {
   -String alamat
   +lacakStatusCucian() void
   +lihatRiwayatPesanan() void
-}
-
-class Karyawan {
-  -String idKaryawan
-  -String shiftKerja
-  +buatPesananBaru() void
-  +perbaruiStatusPesanan() void
-  +rekamDataPakaian() void
-  +jalankanSmartGrouping() void
-}
-
-class Pemilik {
-  -String idPemilik
-  +pantauPesanan() void
-  +lihatDaftarPelanggan() void
-  +tinjauDasborAnalitik() void
-  +unduhLaporanKeuangan() void
-  +kelolaDataKaryawan() void
+  +getInformasiPeran() String
 }
 
 class Pesanan {
   -String idPesanan
   -String idPelanggan
-  -String namaPelanggan
-  -String idKaryawan
-  -String namaKaryawan
-  -LocalDate tanggalMasuk
-  -LocalDate estimasiSelesai
   -StatusPesanan statusPesanan
   -PaketLaundry paketLaundry
   -double beratKg
   -double hargaPerKg
   -double totalBiaya
-  -String catatan
   -List~ItemPakaian~ daftarItem
   +tambahItemPakaian(item: ItemPakaian) void
   +kalkulasiTotalBiaya() double
 }
 
-class TarifLaundry {
-  -String idTarif
-  -PaketLaundry paketLaundry
-  -String namaPaket
-  -int estimasiHari
-  -double hargaPerKg
-  -boolean aktif
-  +hitungTotal(beratKg: double) double
-}
-
 class ItemPakaian {
   -String idItem
-  -String idPesanan
   -String jenisPakaian
   -KategoriWarna kategoriWarna
   -String kondisiAwal
   -String deskripsiDetail
   -String labelSmartGroup
   +terapkanGrupWarna() void
+}
+
+class TarifLaundry {
+  -PaketLaundry paketLaundry
+  -int estimasiHari
+  -double hargaPerKg
+  +hitungTotal(beratKg: double) double
 }
 
 class Pembayaran {
@@ -294,15 +146,11 @@ class Pembayaran {
   +prosesPembayaran() void
 }
 
-class RiwayatPembayaran {
+class Notifikasi {
+  -String idNotifikasi
   -String idPesanan
-  -String namaPelanggan
-  -LocalDate tanggalPesanan
-  -double totalTagihan
-  -String metode
-  -double jumlahBayar
-  -StatusPembayaran status
-  -LocalDateTime tanggalBayar
+  -String pesan
+  -boolean sudahDibaca
 }
 
 class INotifiable {
@@ -310,497 +158,249 @@ class INotifiable {
   +kirimNotifikasi(notifikasi: Notifikasi) void
 }
 
-class Notifikasi {
-  -String idNotifikasi
-  -String idPesanan
-  -String pesan
-  -LocalDateTime tanggalKirim
-  -boolean sudahDibaca
+class AppNotifikasi
+class WhatsAppNotifikasi
+class DataStore {
+  -ArrayList~Pengguna~ daftarPengguna
+  -ArrayList~Pelanggan~ daftarPelanggan
+  -ArrayList~Pesanan~ daftarPesanan
+  -ArrayList~ItemPakaian~ daftarItem
+  -ArrayList~Pembayaran~ daftarPembayaran
+  -ArrayList~Notifikasi~ daftarNotifikasi
+  -ArrayList~TarifLaundry~ daftarTarif
 }
 
-class AppNotifikasi {
-  +kirimNotifikasi(notifikasi: Notifikasi) void
-  +tampilkanDiAplikasi(notifikasi: Notifikasi) String
-}
+Pengguna <|-- Admin
+Pengguna <|-- Pelanggan
+INotifiable <|.. AppNotifikasi
+INotifiable <|.. WhatsAppNotifikasi
+Pelanggan "1" --> "0..*" Pesanan : memantau
+Pesanan "1" *-- "0..*" ItemPakaian : berisi
+Pesanan --> TarifLaundry : memakai tarif
+Pesanan "1" --> "0..1" Pembayaran : memiliki
+Pesanan "1" --> "0..*" Notifikasi : menghasilkan
+DataStore o-- Pengguna
+DataStore o-- Pesanan
+DataStore o-- ItemPakaian
+DataStore o-- Pembayaran
+DataStore o-- Notifikasi
+DataStore o-- TarifLaundry
+```
 
-class WhatsAppNotifikasi {
-  -String nomorTujuan
-  -String linkWhatsApp
-  +kirimNotifikasi(notifikasi: Notifikasi) void
-  +generateLinkWhatsApp(pesan: String) String
-}
+## Final Class Diagram
 
-class DataDasbor {
-  -String idDasbor
-  -int totalPesananAktif
-  -double estimasiPendapatan
-  -double pendapatanDiterima
-  -int totalItem
-  -int totalPelanggan
-  +perbaruiMetrikHarian(totalAktif: int, estimasi: double, diterima: double, totalItem: int, totalPelanggan: int) void
-}
+Diagram final menunjukkan hubungan model, collection, controller, service, dan GUI pada implementasi saat ini.
 
-class LaporanKeuangan {
-  -String idLaporan
-  -String periodeBulan
-  -double totalPendapatan
-  -int jumlahPesananSelesai
-  +cetakDataLaporan() void
-  +formatDataLaporan() String
-}
+```mermaid
+classDiagram
+direction LR
 
-class SmartGroupingService {
-  -LaundryDAO laundryDAO
-  +labelFor(kategoriWarna: KategoriWarna) String
-  +kelompokkanItem(pesanan: Pesanan) void
-  +kelompokkanItem(idPesanan: String) int
+class Pengguna {
+  <<abstract>>
+  +getInformasiPeran()* String
+}
+class Admin
+class Pelanggan
+class Pesanan
+class ItemPakaian
+class TarifLaundry
+class Pembayaran
+class RiwayatPembayaran
+class Notifikasi
+class DataDasbor
+class LaporanKeuangan
+
+class DataStore {
+  <<singleton>>
+  +getInstance() DataStore
+  +reset() void
+  +cariPengguna(username: String, password: String, role: Role) Pengguna
+  +tambahPelanggan(pelanggan: Pelanggan) void
+  +tambahPesanan(pesanan: Pesanan) void
+  +tambahItem(item: ItemPakaian) void
+  +simpanPembayaran(pembayaran: Pembayaran) void
+  +tambahNotifikasi(notifikasi: Notifikasi) void
 }
 
 class AuthController {
-  -UserDAO userDAO
+  -DataStore dataStore
   +login(username: String, password: String, role: Role) Pengguna
-  +testConnection() String
 }
 
 class PenggunaController {
-  -UserDAO userDAO
+  -DataStore dataStore
   +getAllPelanggan() List~Pelanggan~
-  +getAllKaryawan() List~Karyawan~
-  +getDefaultKaryawanId() String
   +tambahPelanggan(username: String, nama: String, telepon: String, password: String, alamat: String) void
-  +tambahKaryawan(username: String, nama: String, telepon: String, password: String, shift: String) void
-  +hapusKaryawan(idKaryawan: String) void
 }
 
 class LaundryController {
-  -LaundryDAO laundryDAO
-  -TarifDAO tarifDAO
+  -DataStore dataStore
   -SmartGroupingService smartGroupingService
-  -AppNotifikasi appNotifikasi
+  -INotifiable appNotifikasi
   +getAllPesanan() List~Pesanan~
   +getPesananPelanggan(idPelanggan: String) List~Pesanan~
-  +getPesanan(idPesanan: String) Pesanan
-  +getTarifAktif() List~TarifLaundry~
-  +tambahPesanan(idPelanggan: String, idKaryawan: String, paketLaundry: PaketLaundry, beratKg: double, catatan: String) Pesanan
-  +updateStatus(idPesanan: String, statusPesanan: StatusPesanan) boolean
-  +batalkanPesanan(idPesanan: String) boolean
-  +getAllItems() List~ItemPakaian~
-  +getItemsByPesanan(idPesanan: String) List~ItemPakaian~
+  +tambahPesanan(idPelanggan: String, paket: PaketLaundry, berat: double, catatan: String) Pesanan
+  +updateStatus(idPesanan: String, status: StatusPesanan) boolean
   +tambahItem(idPesanan: String, jenis: String, warna: KategoriWarna, kondisi: String, deskripsi: String) void
   +jalankanSmartGrouping(idPesanan: String) int
-  +hapusItem(idItem: String) void
-  +getPembayaran(idPesanan: String) Pembayaran
-  +getPesananBelumBayar() List~Pesanan~
-  +getRiwayatPembayaran() List~RiwayatPembayaran~
   +catatPembayaran(idPesanan: String, metode: String) Pembayaran
-  +getNotifikasiPelanggan(idPelanggan: String) List~Notifikasi~
-  +tandaiSemuaDibaca(idPelanggan: String) int
-  +kirimNotifikasiStatus(pesanan: Pesanan) void
-  +buatLinkWhatsApp(idPesanan: String) String
 }
 
-class PemilikController {
-  -DashboardDAO dashboardDAO
-  -TarifDAO tarifDAO
+class AdminController {
+  -DataStore dataStore
   +getDataDasbor() DataDasbor
   +getLaporanBulanIni() LaporanKeuangan
   +getSemuaTarif() List~TarifLaundry~
-  +getTarif(paketLaundry: PaketLaundry) TarifLaundry
-  +updateHarga(paketLaundry: PaketLaundry, hargaPerKg: double) void
+  +updateHarga(paket: PaketLaundry, harga: double) void
 }
 
-class UserDAO {
-  <<DAO>>
-  +authenticate(username: String, passwordHash: String, role: Role) Pengguna
-  +findAllPelanggan() List~Pelanggan~
-  +findAllKaryawan() List~Karyawan~
-  +createPelanggan(pelanggan: Pelanggan) void
-  +createKaryawan(karyawan: Karyawan) void
-  +deleteKaryawan(idKaryawan: String) void
+class SmartGroupingService {
+  +kelompokkanItem(pesanan: Pesanan) void
+  +kelompokkanItem(items: List~ItemPakaian~) void
+  +kelompokkanItem(idPesanan: String) int
 }
 
-class LaundryDAO {
-  <<DAO>>
-  +findAllPesanan() List~Pesanan~
-  +findPesananByPelanggan(idPelanggan: String) List~Pesanan~
-  +findPesananById(idPesanan: String) Pesanan
-  +createPesanan(pesanan: Pesanan) void
-  +updateStatusDanNotifikasi(idPesanan: String, statusLama: StatusPesanan, statusBaru: StatusPesanan, notifikasi: Notifikasi) void
-  +findItemsByPesanan(idPesanan: String) List~ItemPakaian~
-  +findItemById(idItem: String) ItemPakaian
-  +countItemsByPesanan(idPesanan: String) int
-  +createItem(item: ItemPakaian) void
-  +updateSmartGroups(items: List~ItemPakaian~) void
-  +deleteItem(idItem: String) void
-  +findPembayaranByPesanan(idPesanan: String) Pembayaran
-  +findPesananBelumBayar() List~Pesanan~
-  +findRiwayatPembayaran() List~RiwayatPembayaran~
-  +createPembayaran(pembayaran: Pembayaran) void
-  +updatePembayaran(pembayaran: Pembayaran) void
-  +createNotifikasi(notifikasi: Notifikasi) void
-  +findNotifikasiByPelanggan(idPelanggan: String) List~Notifikasi~
-  +findNomorTeleponByPesanan(idPesanan: String) String
-  +notifikasiExists(idPesanan: String, pesan: String) boolean
-  +markAllNotifikasiRead(idPelanggan: String) int
+class INotifiable {
+  <<interface>>
+  +kirimNotifikasi(notifikasi: Notifikasi) void
 }
+class AppNotifikasi
+class WhatsAppNotifikasi
 
-class TarifDAO {
-  <<DAO>>
-  +findAll() List~TarifLaundry~
-  +findActive() List~TarifLaundry~
-  +findByPaket(paket: PaketLaundry) TarifLaundry
-  +updateHarga(paket: PaketLaundry, hargaPerKg: double) void
-}
-
-class DashboardDAO {
-  <<DAO>>
-  +getDataDasbor() DataDasbor
-  +getLaporanBulanIni() LaporanKeuangan
-}
-
-class DatabaseConnection {
-  <<utility>>
-  +getConnection() Connection
-  +testConnection() String
-}
-
-class PasswordUtil {
-  <<utility>>
-  +hash(plainText: String) String
-  +matches(plainText: String, hashed: String) boolean
-}
-
-class IdGenerator {
-  <<utility>>
-  +generate(prefix: String) String
-}
-
+class LoginFrame
+class MainFrame
+class AdminPanel
+class PelangganPanel
+class AppTheme
+class UiUtil
+class IdGenerator
 class Main
-class LoginFrame {
-  <<view>>
-}
-class MainFrame {
-  <<view>>
-}
-class KaryawanPanel {
-  <<view>>
-  +refreshData() void
-}
-class PemilikPanel {
-  <<view>>
-  +refreshData() void
-}
-class PelangganPanel {
-  <<view>>
-}
-class AppTheme {
-  <<utility>>
-}
-class UiUtil {
-  <<utility>>
-}
 
 class Role {
   <<enumeration>>
-  PEMILIK
-  KARYAWAN
+  ADMIN
   PELANGGAN
 }
-
 class StatusPesanan {
   <<enumeration>>
-  BARU
-  DIPROSES
-  DICUCI
-  DIKERINGKAN
-  DISETRIKA
-  SIAP_DIAMBIL
-  SELESAI
-  DIBATALKAN
-  +dapatBerubahKe(statusBaru: StatusPesanan) boolean
-  +membutuhkanItemPakaian() boolean
-  +dapatMengubahItem() boolean
-  +dapatMenerimaPembayaran() boolean
-  +isFinal() boolean
 }
-
 class PaketLaundry {
   <<enumeration>>
-  STANDARD_2_HARI
-  EXPRESS_1_HARI
 }
-
 class KategoriWarna {
   <<enumeration>>
-  PUTIH
-  TERANG
-  GELAP
-  MUDAH_LUNTUR
 }
-
 class StatusPembayaran {
   <<enumeration>>
-  BELUM_BAYAR
-  LUNAS
 }
 
+Pengguna <|-- Admin
 Pengguna <|-- Pelanggan
-Pengguna <|-- Karyawan
-Pengguna <|-- Pemilik
 Pengguna --> Role
 
 INotifiable <|.. AppNotifikasi
 INotifiable <|.. WhatsAppNotifikasi
 
-Pelanggan "1" --> "0..*" Pesanan : memantau
-Karyawan "1" --> "0..*" Pesanan : menginput/mengelola
-Pesanan "1" *-- "0..*" ItemPakaian : berisi
-Pesanan "1" --> "0..1" Pembayaran : memiliki
-Pesanan "1" --> "0..*" Notifikasi : menghasilkan
-Pesanan --> StatusPesanan
-Pesanan --> PaketLaundry
-Pesanan ..> TarifLaundry : snapshot harga
-TarifLaundry --> PaketLaundry
-ItemPakaian --> KategoriWarna
-Pembayaran --> StatusPembayaran
-RiwayatPembayaran --> StatusPembayaran
-Notifikasi --> Pesanan
+DataStore o-- Pengguna
+DataStore o-- Pelanggan
+DataStore o-- Pesanan
+DataStore o-- ItemPakaian
+DataStore o-- Pembayaran
+DataStore o-- Notifikasi
+DataStore o-- TarifLaundry
 
-Pemilik ..> DataDasbor : memantau
-Pemilik ..> LaporanKeuangan : mengakses
-Pemilik ..> Pesanan : memantau
-Pemilik ..> PemilikController : mengelola dashboard dan tarif
-PemilikController --> TarifDAO
-TarifDAO --> TarifLaundry
+Pesanan "1" *-- "0..*" ItemPakaian
+Pesanan "1" --> "0..1" Pembayaran
+Pesanan "1" --> "0..*" Notifikasi
+Pelanggan "1" --> "0..*" Pesanan
 
-AuthController --> UserDAO
-PenggunaController --> UserDAO
-LaundryController --> LaundryDAO
-LaundryController --> TarifDAO
+AuthController --> DataStore
+PenggunaController --> DataStore
+LaundryController --> DataStore
+AdminController --> DataStore
 LaundryController --> SmartGroupingService
-LaundryController --> AppNotifikasi
-LaundryController --> WhatsAppNotifikasi
-PemilikController --> DashboardDAO
+LaundryController --> INotifiable
+SmartGroupingService --> DataStore
+AppNotifikasi --> DataStore
 
-UserDAO --> Pengguna
-UserDAO --> Pelanggan
-UserDAO --> Karyawan
-UserDAO --> Pemilik
-LaundryDAO --> Pesanan
-LaundryDAO --> ItemPakaian
-LaundryDAO --> Pembayaran
-LaundryDAO --> RiwayatPembayaran
-LaundryDAO --> Notifikasi
-DashboardDAO --> DataDasbor
-DashboardDAO --> LaporanKeuangan
-
-AppNotifikasi --> LaundryDAO
-SmartGroupingService --> LaundryDAO
-SmartGroupingService ..> Pesanan
-
-UserDAO ..> DatabaseConnection
-LaundryDAO ..> DatabaseConnection
-TarifDAO ..> DatabaseConnection
-DashboardDAO ..> DatabaseConnection
-
-AuthController ..> PasswordUtil
-PenggunaController ..> PasswordUtil
-PenggunaController ..> IdGenerator
-LaundryController ..> IdGenerator
-
-Main --> LoginFrame
 LoginFrame --> AuthController
 LoginFrame --> PenggunaController
-MainFrame --> PemilikPanel
-MainFrame --> KaryawanPanel
+MainFrame --> AdminPanel
 MainFrame --> PelangganPanel
-KaryawanPanel --> LaundryController
-PemilikPanel --> PenggunaController
-PemilikPanel --> PemilikController
-PemilikPanel --> LaundryController
+AdminPanel --> AdminController
+AdminPanel --> LaundryController
+AdminPanel --> PenggunaController
 PelangganPanel --> LaundryController
-LoginFrame ..> AppTheme
-MainFrame ..> AppTheme
-KaryawanPanel ..> UiUtil
-PemilikPanel ..> UiUtil
-PelangganPanel ..> UiUtil
+Main --> LoginFrame
 ```
 
-### Penjelasan Modul
+## Struktur Project
 
-**Modul A: Aktor dan Manajemen Pengguna**
-- `Pengguna` (Abstract Class) sebagai parent class
-- `Pelanggan`, `Karyawan`, `Pemilik` sebagai child classes dengan fungsi spesifik
-
-**Modul B: Operasional Bisnis**
-- `Pesanan` - Pusat data transaksi laundry
-- `ItemPakaian` - Representasi digital setiap pakaian
-- `SmartGroupingService` - Service pengelompokan otomatis
-- `LaundryController` - Alur pesanan, item pakaian, pembayaran, dan notifikasi
-
-**Modul C: Layanan Sistem**
-- `Pembayaran` - Pencatatan pembayaran lunas per pesanan
-- `INotifiable`, `AppNotifikasi`, `WhatsAppNotifikasi`, dan `Notifikasi` - Sistem notifikasi aplikasi dan template link WhatsApp
-- `DataDasbor` - Dashboard metrik real-time
-- `LaporanKeuangan` - Laporan keuangan periodik
-
-
-
-## 👥 Tim Pengembang
-
-**Kelompok**: Asli Loh Yak
-
-| Nama | Peran |
-|------|-------|
-| Fanan Agfian Mozart | Project Manager & Initiator |
-| Ammar Farras Hanindhiya Bastian | Class Diagram Designer |
-| Naufal Indra Washikita | Dokumentasi Tujuan & Modul B |
-| Mikael Bramantyo Hastungkoro | Dokumentasi Modul A & C |
-| Grace Jessica | Pendahuluan, Visualisasi, Relasi |
-
-## 🛠️ Tech Stack
-
-- **Language**: Java
-- **IDE**: Apache NetBeans
-- **Paradigm**: Object-Oriented Programming (OOP)
-- **GUI**: Java Swing/AWT
-- **Database**: MySQL/XAMPP via JDBC
-- **Design Pattern**: MVC (Model-View-Controller)
-
-## 🚀 Cara Menjalankan
-
-1. **Clone repository**
-```bash
-   git clone https://github.com/Mozartzx/silaundry.git
-   cd silaundry
+```text
+src/silaundry/
+  controller/
+  data/
+  model/
+  model/enums/
+  service/
+  util/
+  view/
+test/silaundry/test/
 ```
 
-2. **Siapkan database**
-   - Jalankan MySQL dari XAMPP
-   - Import file `database/silaundry_schema.sql` melalui phpMyAdmin atau MySQL client
-   - Jika username/password MySQL berbeda, ubah `config/db.properties`
-   - Untuk database versi lama, lakukan backup bila diperlukan lalu import ulang `database/silaundry_schema.sql`
+## Cara Menjalankan di NetBeans
 
-3. **Siapkan JDBC driver**
-   - Unduh MySQL Connector/J
-   - Letakkan file `.jar` di folder `lib/`
-   - Rename menjadi `mysql-connector-j.jar`
+1. Buka Apache NetBeans.
+2. Pilih **File > Open Project**.
+3. Pilih folder project SILAUNDRY.
+4. Klik kanan project lalu pilih **Clean and Build**.
+5. Jalankan main class `silaundry.Main`.
 
-4. **Buka di NetBeans**
-   - File → Open Project
-   - Pilih folder SILAUNDRY
+Program tidak membutuhkan XAMPP, MySQL, Connector/J, atau konfigurasi tambahan.
 
-5. **Build & Run**
-   - Klik kanan pada project → Clean and Build
-   - Run Main File
-   - Hasil build dapat dijalankan langsung dengan `java -jar dist/SILaundry.jar`
-   - Saat build, Connector/J otomatis disalin ke `dist/lib/mysql-connector-j.jar`
+## Alur Presentasi
 
-6. **Jalankan pengujian**
-   - Unit test aturan bisnis: target Ant `test`
-   - Integration test database: target Ant `integration-test` setelah database siap
-   - Dari terminal dengan Ant tersedia: `ant clean test integration-test jar`
+1. Jalankan aplikasi.
+2. Tunjukkan bahwa role Admin dan Pelanggan tersedia.
+3. Register satu akun pelanggan.
+4. Login sebagai Admin menggunakan `masteradmin` / `123456`.
+5. Buat pesanan untuk pelanggan yang baru register.
+6. Tambahkan detail item pakaian.
+7. Jalankan smart grouping.
+8. Ubah status pesanan secara berurutan.
+9. Catat pembayaran.
+10. Logout dan login sebagai pelanggan.
+11. Tampilkan pesanan aktif, riwayat, dan notifikasi pelanggan.
+12. Jelaskan bahwa seluruh data berada di `ArrayList` dan hilang saat aplikasi ditutup.
 
-### Akun Awal Presentasi
+## Pengujian
 
-| Role | Nama | Username | Password |
-|------|------|----------|----------|
-| Pemilik | `Master Admin` | `Master` | `123` |
+Compile melalui PowerShell:
 
-Catatan:
-- Database awal hanya berisi satu akun pemilik sebagai super admin. Tidak ada akun karyawan, pelanggan, atau transaksi dummy.
-- Role pemilik hanya disediakan satu akun awal dan tidak dibuat dari menu register.
-- Karyawan ditambahkan dari dashboard pemilik.
-- Pemilik dapat menghapus akun karyawan; riwayat pesanan yang pernah ditangani tetap tersimpan.
-- Pelanggan dapat membuat akun sendiri melalui tombol **Daftar Pelanggan** di halaman login.
-- Struktur database memakai `pengguna` sebagai tabel parent untuk login/role, sedangkan `pelanggan`, `karyawan`, dan `pemilik` hanya menyimpan atribut khusus masing-masing role.
-- Tarif laundry dikelola oleh pemilik dari menu **Tarif Laundry**:
-  - Standard 2 Hari: default Rp7.000/kg
-  - Express 1 Hari: default Rp8.000/kg
-- Total biaya pesanan dihitung otomatis dari `berat_kg x harga_per_kg`; karyawan dan pelanggan tidak menginput total manual.
-- Karyawan dapat mencatat jenis pakaian, kategori warna, kondisi awal, dan deskripsi detail per item untuk mengurangi risiko pakaian tertukar.
+```powershell
+$files = @(rg --files src test | Where-Object { $_ -like '*.java' })
+javac -encoding UTF-8 -d build\classes $files
+```
 
-### Alur Presentasi yang Disarankan
+Jalankan test:
 
-1. Login sebagai pemilik dengan akun `Master` / `123`.
-2. Tambahkan satu akun karyawan melalui menu **Kelola Karyawan**.
-3. Logout, lalu buat satu akun pelanggan melalui tombol **Daftar Pelanggan**.
-4. Login sebagai karyawan dan buat pesanan untuk pelanggan tersebut.
-5. Tambahkan detail item pakaian, jalankan smart grouping, lalu perbarui status pesanan secara berurutan.
-6. Catat pembayaran dari daftar tagihan belum lunas, lalu periksa tabel riwayat pembayaran.
-7. Login sebagai pelanggan untuk menunjukkan status aktif, notifikasi, dan riwayat pesanan.
-8. Login kembali sebagai pemilik untuk memantau pesanan aktif, riwayat pesanan, perubahan dashboard, dan laporan keuangan.
+```powershell
+java -cp build\classes silaundry.test.BusinessRulesTest
+```
 
-Untuk mengembalikan database yang sudah pernah dipakai ke kondisi awal presentasi tanpa membuat ulang tabel, jalankan `database/reset_presentasi.sql`.
+Test mensimulasikan login Admin, register dan login pelanggan, pesanan, item pakaian, smart grouping, status, notifikasi, pembayaran, dan dashboard.
 
-### Aturan Bisnis Utama
+## Batasan
 
-- Status pesanan bergerak berurutan dari `BARU` sampai `SELESAI` dan tidak dapat mundur.
-- Pesanan hanya dapat dibatalkan sebelum proses pencucian dimulai dan sebelum ada pembayaran; pembatalan tidak menghapus riwayat transaksi.
-- Minimal satu item pakaian harus tercatat sebelum status berubah menjadi `DICUCI`.
-- Item pakaian hanya dapat ditambah atau dihapus sebelum proses pencucian dimulai.
-- Item baru berstatus `Belum Dikelompokkan`; karyawan menekan **Kelompokkan Warna** untuk menerapkan smart grouping.
-- Satu pesanan memiliki satu pembayaran sesuai total tagihan dan langsung dicatat sebagai lunas.
-- Daftar pembayaran menempatkan tagihan belum lunas di atas dan hanya menampilkan tagihan belum lunas pada dropdown pencatatan.
-- Pendapatan dashboard dihitung dari pembayaran lunas pada tanggal pembayaran.
-- Perubahan status dan pembuatan notifikasi aplikasi disimpan dalam satu transaksi database.
-- Notifikasi aplikasi dibuat ketika status berubah menjadi siap diambil atau selesai.
-- Pelanggan hanya dapat melacak item pakaian yang terhubung ke pesanannya sendiri.
+- Data hanya tersedia selama aplikasi berjalan.
+- Data tidak disimpan ke file atau database.
+- Aplikasi ditujukan sebagai simulasi tugas besar, bukan sistem produksi.
+- Link WhatsApp hanya berupa template dan tidak dikirim otomatis melalui API.
 
-## 📊 Fitur Utama
+## Mata Kuliah
 
-### Untuk Pelanggan
-- 📱 Lacak status cucian secara real-time
-- Lihat pesanan yang sedang berjalan
-- Lihat riwayat pesanan selesai atau dibatalkan
-- 🔔 Melihat notifikasi aplikasi saat pesanan siap diambil atau selesai
+- Mata Kuliah: Pemrograman Berorientasi Objek
+- Institusi: Telkom University
+- Tahun: 2026
 
-### Untuk Karyawan
-- Hitung total otomatis berdasarkan paket dan berat kilo
-- Catat deskripsi detail pakaian pelanggan
-- Tambah, perbarui status, dan batalkan pesanan tanpa menghapus riwayat
-- 📦 Rekam data pakaian per item
-- 🎨 Eksekusi Smart Grouping
-- 🔄 Update status operasional
-- Membuat template link WhatsApp dari pesanan terpilih
-
-### Untuk Owner/Pemilik
-- Pantau pesanan aktif dan riwayat pesanan seluruh pelanggan
-- Lihat dan cari daftar seluruh pelanggan yang terdaftar
-- Kelola harga per kilo untuk paket Standard 2 Hari dan Express 1 Hari
-- 📈 Dashboard analitik performa
-- 💰 Laporan keuangan bulanan
-- 👥 Kelola data karyawan
-
-## 🔗 Relasi Kelas
-
-- **Inheritance**: `Pengguna` → `Pelanggan`, `Karyawan`, `Pemilik`
-- **Interface**: `INotifiable` diimplementasikan oleh `AppNotifikasi` dan `WhatsAppNotifikasi`
-- **Association**: Aktor ↔ Pesanan, Pemilik ↔ Monitoring
-- **Composition**: `Pesanan` ◆→ `ItemPakaian`, `Pembayaran`
-
-## 📖 Dokumentasi
-
-- [Class Diagram](docs/class-diagram.png)
-- [Flowchart Operasional](docs/flowchart.png)
-- [Laporan Lengkap](docs/laporan.pdf)
-
-## 📚 Mata Kuliah
-
-- **Mata Kuliah**: Pemrograman Berorientasi Objek (PBO)
-- **Dosen Pengampu**: Miftahul Adnan Rasyid (MIU)
-- **Semester**: 2
-- **Institusi**: Telkom University
-- **Tanggal Pengumpulan**: 4 Mei 2026
-
-## 📝 Lisensi
-
-Project ini dibuat untuk keperluan akademis Tugas Besar mata kuliah Pemrograman Berorientasi Objek.
-
-## 🤝 Kontribusi
-
-Kontribusi terbatas untuk anggota kelompok "Asli Loh Yak". Untuk pertanyaan atau saran, silakan hubungi salah satu anggota tim.
-
----
-
-**© 2026 Kelompok Asli Loh Yak - Telkom University**
+Project ini dibuat untuk keperluan akademis Tugas Besar Pemrograman Berorientasi Objek.

@@ -75,7 +75,7 @@ public final class UiUtil {
         if (ex != null) {
             ex.printStackTrace();
         }
-        JOptionPane.showMessageDialog(parent, message + "\nSilakan periksa koneksi atau data yang dimasukkan.",
+        JOptionPane.showMessageDialog(parent, message + "\nSilakan periksa data yang dimasukkan.",
                 "Terjadi Kesalahan", JOptionPane.ERROR_MESSAGE);
     }
 

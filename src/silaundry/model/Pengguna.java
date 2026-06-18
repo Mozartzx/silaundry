@@ -11,6 +11,7 @@ public abstract class Pengguna {
     private String kataSandi;
     private Role role;
 
+    // Constructor mengisi data umum yang dimiliki semua jenis pengguna.
     protected Pengguna(String idPengguna, String username, String namaLengkap, String nomorTelepon,
             String kataSandi, Role role) {
         this.idPengguna = idPengguna;
@@ -29,6 +30,10 @@ public abstract class Pengguna {
         System.out.println(namaLengkap + " logout");
     }
 
+    // Setiap jenis pengguna wajib menjelaskan hak aksesnya dengan implementasi masing-masing.
+    public abstract String getInformasiPeran();
+
+    // Getter dan setter digunakan untuk membaca atau mengubah data pengguna.
     public String getIdPengguna() {
         return idPengguna;
     }

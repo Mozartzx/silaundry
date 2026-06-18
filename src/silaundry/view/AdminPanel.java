@@ -1,6 +1,7 @@
 package silaundry.view;
 
 import java.awt.BorderLayout;
+import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import javax.swing.BorderFactory;
@@ -10,14 +11,18 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
+import silaundry.controller.AdminController;
 import silaundry.controller.LaundryController;
 import silaundry.controller.PenggunaController;
+import silaundry.model.Admin;
+import silaundry.model.DataDasbor;
 import silaundry.model.ItemPakaian;
-import silaundry.model.Karyawan;
+import silaundry.model.LaporanKeuangan;
 import silaundry.model.Pelanggan;
 import silaundry.model.Pembayaran;
 import silaundry.model.Pesanan;
@@ -27,16 +32,24 @@ import silaundry.model.enums.KategoriWarna;
 import silaundry.model.enums.StatusPembayaran;
 import silaundry.model.enums.StatusPesanan;
 
-// Menampilkan pekerjaan karyawan untuk pesanan, item pakaian, dan pembayaran.
-public class KaryawanPanel extends JPanel {
+// Panel admin menggabungkan pekerjaan operasional dan pemantauan usaha dalam satu role.
+public class AdminPanel extends JPanel {
     public enum Page {
-        PESANAN, ITEM_PAKAIAN, PEMBAYARAN
+        DASHBOARD, PESANAN, ITEM_PAKAIAN, PEMBAYARAN, PELANGGAN, TARIF
     }
 
-    private final Karyawan karyawan;
+    private final Admin admin;
     private final Page page;
+    private final AdminController adminController = new AdminController();
     private final LaundryController laundryController = new LaundryController();
     private final PenggunaController penggunaController = new PenggunaController();
+
+    private final JLabel aktifLabel = new JLabel("-");
+    private final JLabel nilaiAktifLabel = new JLabel("-");
+    private final JLabel pendapatanLabel = new JLabel("-");
+    private final JLabel itemLabel = new JLabel("-");
+    private final JLabel pelangganLabel = new JLabel("-");
+    private final JTextArea laporanArea = new JTextArea(8, 60);
 
     private final DefaultTableModel orderModel = UiUtil.model("ID", "Pelanggan", "Tanggal", "Estimasi", "Paket",
             "Berat", "Harga/kg", "Status", "Total", "Catatan");
@@ -67,10 +80,21 @@ public class KaryawanPanel extends JPanel {
     private final JLabel paymentTotalLabel = AppTheme.muted("-");
     private final JLabel paymentStatusLabel = AppTheme.muted("Pilih pesanan");
     private final JButton paymentSaveButton = AppTheme.primaryButton("Catat Pembayaran Lunas");
+
+    private final DefaultTableModel pelangganModel = UiUtil.model("ID", "Username", "Nama", "Telepon", "Alamat");
+    private final JTable pelangganTable = new JTable(pelangganModel);
+    private final JTextField pelangganSearchField = new JTextField(18);
+    private final JLabel pelangganSummaryLabel = AppTheme.muted("Memuat data pelanggan...");
+
+    private final DefaultTableModel tarifModel = UiUtil.model("ID", "Paket", "Estimasi", "Harga/kg", "Aktif");
+    private final JTable tarifTable = new JTable(tarifModel);
+    private final JComboBox<TarifLaundry> tarifSettingCombo = new JComboBox<>();
+    private final JTextField hargaTarifField = new JTextField(10);
+
     private boolean updatingOrderChoices;
 
-    public KaryawanPanel(Karyawan karyawan, Page page) {
-        this.karyawan = karyawan;
+    public AdminPanel(Admin admin, Page page) {
+        this.admin = admin;
         this.page = page;
         installComboPlaceholders();
         paymentSaveButton.setEnabled(false);
@@ -90,27 +114,63 @@ public class KaryawanPanel extends JPanel {
                 loadPaymentDetails();
             }
         });
+        tarifSettingCombo.addActionListener(event -> tarifSelected());
         add(switch (page) {
+            case DASHBOARD -> buildDashboardPanel();
             case PESANAN -> buildOrderPanel();
             case ITEM_PAKAIAN -> buildItemPanel();
             case PEMBAYARAN -> buildPaymentPanel();
+            case PELANGGAN -> buildPelangganPanel();
+            case TARIF -> buildTarifPanel();
         }, BorderLayout.CENTER);
     }
 
     public void refreshData() {
-        // Setiap halaman hanya memuat data yang memang dipakai pada menu tersebut.
+        // Setiap menu hanya memuat data yang memang sedang dipakai supaya tampilannya ringan.
         switch (page) {
+            case DASHBOARD -> refreshDashboard();
             case PESANAN -> {
                 refreshCustomers();
-                refreshTarif();
+                refreshTarifChoices();
                 refreshOrders();
             }
             case ITEM_PAKAIAN -> refreshOrderChoices(itemOrderCombo, this::refreshItems);
             case PEMBAYARAN -> refreshPaymentData();
+            case PELANGGAN -> refreshPelanggan();
+            case TARIF -> refreshTarifSettings();
         }
     }
 
-    // Tiga method build berikut menyusun halaman sesuai menu pada sidebar karyawan.
+    // Bagian build menyusun tampilan untuk setiap menu pada sidebar Admin.
+    private JPanel buildDashboardPanel() {
+        JPanel panel = AppTheme.page(new BorderLayout(12, 12));
+        JPanel header = AppTheme.surface(new BorderLayout(4, 4));
+        header.add(AppTheme.sectionTitle("Dashboard Admin"), BorderLayout.NORTH);
+        header.add(AppTheme.muted("Ringkasan transaksi dan laporan bulan berjalan."), BorderLayout.CENTER);
+
+        JPanel metrics = new JPanel(new GridLayout(2, 3, 10, 10));
+        metrics.setBackground(AppTheme.BACKGROUND);
+        metrics.add(metricCard("Pesanan Aktif", aktifLabel));
+        metrics.add(metricCard("Nilai Pesanan Aktif", nilaiAktifLabel));
+        metrics.add(metricCard("Pendapatan Bulan Ini", pendapatanLabel));
+        metrics.add(metricCard("Total Item", itemLabel));
+        metrics.add(metricCard("Total Pelanggan", pelangganLabel));
+
+        laporanArea.setEditable(false);
+        AppTheme.styleTextArea(laporanArea);
+        JButton refreshButton = AppTheme.primaryButton("Refresh Dashboard");
+        refreshButton.addActionListener(event -> refreshData());
+
+        JPanel top = new JPanel(new BorderLayout(0, 12));
+        top.setBackground(AppTheme.BACKGROUND);
+        top.add(header, BorderLayout.NORTH);
+        top.add(metrics, BorderLayout.CENTER);
+        panel.add(top, BorderLayout.NORTH);
+        panel.add(AppTheme.scroll(laporanArea), BorderLayout.CENTER);
+        panel.add(refreshButton, BorderLayout.SOUTH);
+        return panel;
+    }
+
     private JPanel buildOrderPanel() {
         JPanel panel = AppTheme.page(new BorderLayout(10, 10));
         UiUtil.applyTableStyle(orderTable);
@@ -121,8 +181,8 @@ public class KaryawanPanel extends JPanel {
         JPanel title = new JPanel(new BorderLayout(0, 4));
         title.setBackground(AppTheme.SURFACE);
         title.add(AppTheme.sectionTitle("Manajemen Pesanan"), BorderLayout.NORTH);
-        title.add(AppTheme.muted("Karyawan: " + karyawan.getNamaLengkap() + " | Shift " + karyawan.getShiftKerja()),
-                BorderLayout.CENTER);
+        title.add(AppTheme.muted("Admin: " + admin.getNamaLengkap()
+                + " | Tambah pesanan dan update status laundry."), BorderLayout.CENTER);
 
         JPanel fields = AppTheme.formGrid();
         AppTheme.addField(fields, 0, 0, "Pelanggan", pelangganCombo);
@@ -143,6 +203,7 @@ public class KaryawanPanel extends JPanel {
         cancelButton.addActionListener(event -> cancelOrder());
         JButton refreshButton = AppTheme.secondaryButton("Refresh");
         refreshButton.addActionListener(event -> refreshData());
+
         JPanel actions = AppTheme.actionRow();
         actions.add(createButton);
         actions.add(statusButton);
@@ -162,12 +223,12 @@ public class KaryawanPanel extends JPanel {
         JPanel panel = AppTheme.page(new BorderLayout(10, 10));
         UiUtil.applyTableStyle(itemTable);
         UiUtil.installSearch(itemTable, itemSearchField);
+
         JPanel form = AppTheme.surface(new BorderLayout(0, 12));
         JPanel title = new JPanel(new BorderLayout(0, 4));
         title.setBackground(AppTheme.SURFACE);
         title.add(AppTheme.sectionTitle("Data Item Pakaian"), BorderLayout.NORTH);
-        title.add(AppTheme.muted("Pilih pesanan, catat ciri pakaian, lalu kelompokkan berdasarkan warna."),
-                BorderLayout.CENTER);
+        title.add(AppTheme.muted("Catat ciri pakaian agar risiko tertukar lebih kecil."), BorderLayout.CENTER);
 
         JPanel fields = AppTheme.formGrid();
         AppTheme.addWideField(fields, 0, "Pesanan", itemOrderCombo);
@@ -185,6 +246,7 @@ public class KaryawanPanel extends JPanel {
         deleteButton.addActionListener(event -> deleteItem());
         JButton refreshButton = AppTheme.secondaryButton("Refresh");
         refreshButton.addActionListener(event -> refreshData());
+
         JPanel actions = AppTheme.actionRow();
         actions.add(addButton);
         actions.add(groupButton);
@@ -202,12 +264,12 @@ public class KaryawanPanel extends JPanel {
     private JPanel buildPaymentPanel() {
         JPanel pagePanel = AppTheme.page(new BorderLayout(0, 12));
         UiUtil.applyTableStyle(paymentTable);
+
         JPanel panel = AppTheme.surface(new BorderLayout(0, 12));
         JPanel title = new JPanel(new BorderLayout(0, 4));
         title.setBackground(AppTheme.SURFACE);
         title.add(AppTheme.sectionTitle("Pembayaran"), BorderLayout.NORTH);
-        title.add(AppTheme.muted("Pilih tagihan yang belum lunas. Riwayat terbaru ditampilkan di bawah."),
-                BorderLayout.CENTER);
+        title.add(AppTheme.muted("Dropdown hanya menampilkan pesanan yang belum lunas."), BorderLayout.CENTER);
 
         JPanel fields = AppTheme.formGrid();
         AppTheme.addWideField(fields, 0, "Pesanan", paymentOrderCombo);
@@ -218,6 +280,7 @@ public class KaryawanPanel extends JPanel {
         paymentSaveButton.addActionListener(event -> savePayment());
         JButton refreshButton = AppTheme.secondaryButton("Refresh");
         refreshButton.addActionListener(event -> refreshData());
+
         JPanel actions = AppTheme.actionRow();
         actions.add(paymentSaveButton);
         actions.add(refreshButton);
@@ -230,6 +293,74 @@ public class KaryawanPanel extends JPanel {
         return pagePanel;
     }
 
+    private JPanel buildPelangganPanel() {
+        JPanel panel = AppTheme.page(new BorderLayout(10, 10));
+        UiUtil.applyTableStyle(pelangganTable);
+        UiUtil.installSearch(pelangganTable, pelangganSearchField);
+
+        JPanel header = AppTheme.surface(new BorderLayout(12, 8));
+        JPanel title = new JPanel(new GridLayout(2, 1, 0, 3));
+        title.setBackground(AppTheme.SURFACE);
+        title.add(AppTheme.sectionTitle("Daftar Pelanggan"));
+        title.add(pelangganSummaryLabel);
+
+        JPanel search = AppTheme.formGrid();
+        AppTheme.addField(search, 0, 0, "Cari", pelangganSearchField);
+        JButton refreshButton = AppTheme.primaryButton("Refresh");
+        refreshButton.addActionListener(event -> refreshData());
+
+        JPanel right = new JPanel(new BorderLayout(8, 0));
+        right.setBackground(AppTheme.SURFACE);
+        right.add(search, BorderLayout.CENTER);
+        right.add(refreshButton, BorderLayout.EAST);
+
+        header.add(title, BorderLayout.CENTER);
+        header.add(right, BorderLayout.EAST);
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(AppTheme.scroll(pelangganTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildTarifPanel() {
+        JPanel panel = AppTheme.page(new BorderLayout(10, 10));
+        UiUtil.applyTableStyle(tarifTable);
+
+        JPanel form = AppTheme.surface(new BorderLayout(0, 12));
+        JPanel title = new JPanel(new BorderLayout(0, 4));
+        title.setBackground(AppTheme.SURFACE);
+        title.add(AppTheme.sectionTitle("Tarif Laundry"), BorderLayout.NORTH);
+        title.add(AppTheme.muted("Admin dapat mengubah harga per kilogram untuk pesanan berikutnya."),
+                BorderLayout.CENTER);
+
+        JPanel fields = AppTheme.formGrid();
+        AppTheme.addField(fields, 0, 0, "Paket", tarifSettingCombo);
+        AppTheme.addField(fields, 0, 1, "Harga/kg", hargaTarifField);
+        JButton updateButton = AppTheme.primaryButton("Update Harga");
+        updateButton.addActionListener(event -> updateTarif());
+        JButton refreshButton = AppTheme.secondaryButton("Refresh");
+        refreshButton.addActionListener(event -> refreshData());
+
+        JPanel actions = AppTheme.actionRow();
+        actions.add(updateButton);
+        actions.add(refreshButton);
+
+        form.add(title, BorderLayout.NORTH);
+        form.add(fields, BorderLayout.CENTER);
+        form.add(actions, BorderLayout.SOUTH);
+        panel.add(form, BorderLayout.NORTH);
+        panel.add(AppTheme.scroll(tarifTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel metricCard(String title, JLabel valueLabel) {
+        JPanel panel = AppTheme.compactSurface(new BorderLayout(4, 8));
+        valueLabel.setFont(AppTheme.TITLE_FONT.deriveFont(22f));
+        valueLabel.setForeground(AppTheme.PRIMARY_DARK);
+        panel.add(AppTheme.muted(title), BorderLayout.NORTH);
+        panel.add(valueLabel, BorderLayout.CENTER);
+        return panel;
+    }
+
     private void installComboPlaceholders() {
         UiUtil.installComboPlaceholder(pelangganCombo, "Pilih pelanggan");
         UiUtil.installComboPlaceholder(statusCombo, "Pilih status berikutnya");
@@ -238,6 +369,7 @@ public class KaryawanPanel extends JPanel {
         UiUtil.installComboPlaceholder(warnaCombo, "Pilih kategori warna");
         UiUtil.installComboPlaceholder(paymentOrderCombo, "Pilih pesanan belum bayar");
         UiUtil.installComboPlaceholder(paymentMethodCombo, "Pilih metode pembayaran");
+        UiUtil.installComboPlaceholder(tarifSettingCombo, "Pilih paket laundry");
     }
 
     private void styleInputs() {
@@ -255,9 +387,27 @@ public class KaryawanPanel extends JPanel {
         AppTheme.styleTextField(itemSearchField);
         AppTheme.styleComboBox(paymentOrderCombo);
         AppTheme.styleComboBox(paymentMethodCombo);
+        AppTheme.styleTextField(pelangganSearchField);
+        AppTheme.styleComboBox(tarifSettingCombo);
+        AppTheme.styleTextField(hargaTarifField);
     }
 
-    // Method refresh membaca ulang data setelah ada perubahan dari pengguna.
+    // Bagian refresh mengambil data terbaru dari ArrayList ke komponen GUI.
+    private void refreshDashboard() {
+        UiUtil.runTask(this,
+                () -> new DashboardDataResult(adminController.getDataDasbor(), adminController.getLaporanBulanIni()),
+                result -> {
+                    DataDasbor data = result.dataDasbor();
+                    LaporanKeuangan laporan = result.laporan();
+                    aktifLabel.setText(String.valueOf(data.getTotalPesananAktif()));
+                    nilaiAktifLabel.setText(UiUtil.money(data.getEstimasiPendapatan()));
+                    pendapatanLabel.setText(UiUtil.money(data.getPendapatanDiterima()));
+                    itemLabel.setText(String.valueOf(data.getTotalItem()));
+                    pelangganLabel.setText(String.valueOf(data.getTotalPelanggan()));
+                    laporanArea.setText("Laporan bulan ini\n" + laporan.formatDataLaporan());
+                }, "Gagal memuat dashboard.");
+    }
+
     private void refreshCustomers() {
         UiUtil.runTask(this, penggunaController::getAllPelanggan, rows -> {
             pelangganCombo.removeAllItems();
@@ -266,7 +416,7 @@ public class KaryawanPanel extends JPanel {
         }, "Gagal memuat pelanggan.");
     }
 
-    private void refreshTarif() {
+    private void refreshTarifChoices() {
         UiUtil.runTask(this, laundryController::getTarifAktif, rows -> {
             tarifCombo.removeAllItems();
             rows.forEach(tarifCombo::addItem);
@@ -317,7 +467,7 @@ public class KaryawanPanel extends JPanel {
     }
 
     private void refreshPaymentData() {
-        // Riwayat dan pilihan tagihan dimuat bersamaan agar tampilan selalu konsisten setelah pembayaran.
+        // Riwayat dan pilihan tagihan dimuat bersamaan agar halaman pembayaran tetap konsisten.
         refreshPaymentHistory();
         refreshUnpaidOrderChoices();
     }
@@ -343,7 +493,6 @@ public class KaryawanPanel extends JPanel {
     private void refreshUnpaidOrderChoices() {
         String selectedId = selectedOrderId(paymentOrderCombo);
         UiUtil.runTask(this, laundryController::getPesananBelumBayar, rows -> {
-            // Dropdown sengaja hanya berisi pesanan belum lunas agar karyawan tidak salah memilih.
             updatingOrderChoices = true;
             paymentOrderCombo.removeAllItems();
             boolean selectionRestored = false;
@@ -378,7 +527,33 @@ public class KaryawanPanel extends JPanel {
         }, "Gagal memuat item pakaian.");
     }
 
-    // Method aksi di bawah dijalankan ketika tombol pada halaman ditekan.
+    private void refreshPelanggan() {
+        UiUtil.runTask(this, penggunaController::getAllPelanggan, rows -> {
+            pelangganModel.setRowCount(0);
+            for (Pelanggan pelanggan : rows) {
+                pelangganModel.addRow(new Object[] { pelanggan.getIdPelanggan(), pelanggan.getUsername(),
+                        pelanggan.getNamaLengkap(), pelanggan.getNomorTelepon(), pelanggan.getAlamat() });
+            }
+            pelangganSummaryLabel.setText(rows.size() + " pelanggan terdaftar.");
+        }, "Gagal memuat data pelanggan.");
+    }
+
+    private void refreshTarifSettings() {
+        UiUtil.runTask(this, adminController::getSemuaTarif, rows -> {
+            tarifModel.setRowCount(0);
+            tarifSettingCombo.removeAllItems();
+            for (TarifLaundry tarif : rows) {
+                tarifModel.addRow(new Object[] { tarif.getIdTarif(), tarif.getNamaPaket(),
+                        tarif.getEstimasiHari() + " hari", UiUtil.money(tarif.getHargaPerKg()),
+                        tarif.isAktif() ? "Aktif" : "Nonaktif" });
+                tarifSettingCombo.addItem(tarif);
+            }
+            tarifSettingCombo.setSelectedIndex(-1);
+            tarifSelected();
+        }, "Gagal memuat tarif laundry.");
+    }
+
+    // Bagian aksi dipanggil ketika Admin menekan tombol pada halaman.
     private void createOrder() {
         Pelanggan pelanggan = (Pelanggan) pelangganCombo.getSelectedItem();
         TarifLaundry tarif = (TarifLaundry) tarifCombo.getSelectedItem();
@@ -388,12 +563,12 @@ public class KaryawanPanel extends JPanel {
         }
         double beratKg = ((Number) beratSpinner.getValue()).doubleValue();
         UiUtil.runTask(this, () -> laundryController.tambahPesanan(pelanggan.getIdPelanggan(),
-                karyawan.getIdKaryawan(), tarif.getPaketLaundry(), beratKg, catatanField.getText().trim()), created -> {
-            catatanField.setText("");
-            refreshOrders();
-            UiUtil.info(this, "Pesanan " + created.getIdPesanan()
-                    + " berhasil dibuat. Lanjutkan melalui menu Item Pakaian.");
-        }, "Gagal menambah pesanan.");
+                tarif.getPaketLaundry(), beratKg, catatanField.getText().trim()), created -> {
+                    catatanField.setText("");
+                    refreshOrders();
+                    UiUtil.info(this, "Pesanan " + created.getIdPesanan()
+                            + " berhasil dibuat. Lanjutkan melalui menu Item Pakaian.");
+                }, "Gagal menambah pesanan.");
     }
 
     private void orderSelected(ListSelectionEvent event) {
@@ -408,6 +583,7 @@ public class KaryawanPanel extends JPanel {
             if (pesanan == null) {
                 return;
             }
+            statusCombo.setSelectedIndex(-1);
             for (StatusPesanan candidate : StatusPesanan.values()) {
                 if (candidate != StatusPesanan.DIBATALKAN
                         && pesanan.getStatusPesanan().dapatBerubahKe(candidate)) {
@@ -539,11 +715,41 @@ public class KaryawanPanel extends JPanel {
             return;
         }
         UiUtil.runTask(this, () -> laundryController.catatPembayaran(pesanan.getIdPesanan(), metode), payment -> {
-            // Setelah dibayar, pesanan otomatis hilang dari dropdown dan masuk ke riwayat lunas.
             refreshPaymentData();
             paymentMethodCombo.setSelectedIndex(-1);
             UiUtil.info(this, "Pembayaran lunas berhasil dicatat.");
         }, "Gagal mencatat pembayaran.");
+    }
+
+    private void tarifSelected() {
+        TarifLaundry tarif = (TarifLaundry) tarifSettingCombo.getSelectedItem();
+        if (tarif != null) {
+            hargaTarifField.setText(String.valueOf(Math.round(tarif.getHargaPerKg())));
+        } else {
+            hargaTarifField.setText("");
+        }
+    }
+
+    private void updateTarif() {
+        TarifLaundry tarif = (TarifLaundry) tarifSettingCombo.getSelectedItem();
+        if (tarif == null) {
+            UiUtil.info(this, "Pilih paket laundry terlebih dahulu.");
+            return;
+        }
+        final double harga;
+        try {
+            harga = Double.parseDouble(hargaTarifField.getText().trim());
+        } catch (NumberFormatException ex) {
+            UiUtil.info(this, "Harga per kilo harus berupa angka.");
+            return;
+        }
+        UiUtil.runTask(this, () -> {
+            adminController.updateHarga(tarif.getPaketLaundry(), harga);
+            return null;
+        }, ignored -> {
+            refreshTarifSettings();
+            UiUtil.info(this, "Harga " + tarif.getNamaPaket() + " berhasil diperbarui.");
+        }, "Gagal memperbarui tarif laundry.");
     }
 
     private void updateTotalPreview() {
@@ -556,8 +762,12 @@ public class KaryawanPanel extends JPanel {
         totalPreviewLabel.setText(UiUtil.money(tarif.hitungTotal(berat)));
     }
 
+    // Helper ini mengambil ID pesanan yang sedang dipilih pada dropdown.
     private String selectedOrderId(JComboBox<Pesanan> combo) {
         Pesanan selected = (Pesanan) combo.getSelectedItem();
         return selected == null ? null : selected.getIdPesanan();
+    }
+
+    private record DashboardDataResult(DataDasbor dataDasbor, LaporanKeuangan laporan) {
     }
 }
